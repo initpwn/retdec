@@ -4,12 +4,13 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "bin2llvmir/optimizations/asm_inst_remover/asm_inst_remover.h"
 #include "bin2llvmir/utils/llvmir_tests.h"
+#include "retdec/bin2llvmir/optimizations/asm_inst_remover/asm_inst_remover.h"
 
 using namespace ::testing;
 using namespace llvm;
 
+namespace retdec {
 namespace bin2llvmir {
 namespace tests {
 
@@ -35,7 +36,7 @@ TEST_F(AsmInstructionRemoverTests, passDoesNotSegfaultAndReturnsFalseIfConfigFor
 
 TEST_F(AsmInstructionRemoverTests, passDoesNotSegfaultAndReturnsFalseIfNullptrConfigPassed)
 {
-	bool b = pass.runOnModuleCustom(*module, nullptr);
+	bool b = pass.runOnModuleCustom(*module);
 
 	EXPECT_FALSE(b);
 }
@@ -55,26 +56,26 @@ TEST_F(AsmInstructionRemoverTests, passRemovesEverythingRelatedToLlvmToAsmMappin
 			store i32 12288, i32* @specialGv
 			ret i32 %c
 		}
-		!0 = !{ !"specialGv" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 	)");
 	auto* gv = getGlobalByName("specialGv");
-	auto s = retdec_config::Storage::inRegister("esp");
-	auto r = retdec_config::Object("esp", s);
-	auto c = Config::empty(module.get());
-	c.setLlvmToAsmGlobalVariable(gv);
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), gv);
+	auto s = retdec::common::Storage::inRegister("esp");
+	auto r = retdec::common::Object("esp", s);
 
-	bool b = pass.runOnModuleCustom(*module, &c);
+	bool b = pass.runOnModuleCustom(*module);
 
 	std::string exp = R"(
 		@reg = global i32 0
 		define i32 @func() {
 			%a = load i32, i32* @reg
-			%v0_1000 = add i32 %a, 1234
-			store i32 %v0_1000, i32* @reg
-			%v0_2000 = load i32, i32* @reg
-			ret i32 %v0_2000
+			%b = add i32 %a, 1234, !insn.addr !0
+			store i32 %b, i32* @reg, !insn.addr !1
+			%c = load i32, i32* @reg, !insn.addr !1
+			ret i32 %c, !insn.addr !2
 		}
+		!0 = !{i64 4096}
+		!1 = !{i64 8192}
+		!2 = !{i64 12288}
 	)";
 	checkModuleAgainstExpectedIr(exp);
 	EXPECT_TRUE(b);
@@ -82,3 +83,4 @@ TEST_F(AsmInstructionRemoverTests, passRemovesEverythingRelatedToLlvmToAsmMappin
 
 } // namespace tests
 } // namespace bin2llvmir
+} // namespace retdec

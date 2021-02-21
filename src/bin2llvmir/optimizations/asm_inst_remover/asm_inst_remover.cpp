@@ -5,27 +5,19 @@
  * @copyright (c) 2017 Avast Software, licensed under the MIT license
  */
 
-#include <iomanip>
-#include <iostream>
+#include "retdec/bin2llvmir/optimizations/asm_inst_remover/asm_inst_remover.h"
+#include "retdec/bin2llvmir/providers/asm_instruction.h"
+#include "retdec/bin2llvmir/providers/names.h"
 
-#include <llvm/IR/Instruction.h>
-#include <llvm/IR/Instructions.h>
-
-#include "bin2llvmir/optimizations/asm_inst_remover/asm_inst_remover.h"
-#include "bin2llvmir/providers/asm_instruction.h"
-#include "bin2llvmir/utils/defs.h"
-#define debug_enabled false
-#include "llvm-support/utils.h"
-
-using namespace llvm_support;
 using namespace llvm;
 
+namespace retdec {
 namespace bin2llvmir {
 
 char AsmInstructionRemover::ID = 0;
 
 static RegisterPass<AsmInstructionRemover> X(
-		"remove-asm-instrs",
+		"retdec-remove-asm-instrs",
 		"Assembly mapping instruction removal",
 		 false, // Only looks at CFG
 		 false // Analysis Pass
@@ -39,13 +31,11 @@ AsmInstructionRemover::AsmInstructionRemover() :
 
 bool AsmInstructionRemover::runOnModule(Module& M)
 {
-	_config = ConfigProvider::getConfig(&M);
 	return run(M);
 }
 
-bool AsmInstructionRemover::runOnModuleCustom(llvm::Module& M, Config* c)
+bool AsmInstructionRemover::runOnModuleCustom(llvm::Module& M)
 {
-	_config = c;
 	return run(M);
 }
 
@@ -55,88 +45,53 @@ bool AsmInstructionRemover::runOnModuleCustom(llvm::Module& M, Config* c)
  */
 bool AsmInstructionRemover::run(Module& M)
 {
-	if (_config == nullptr)
-	{
-		LOG << "[ABORT] config file is not available\n";
-		return false;
-	}
-
 	bool changed = false;
 
-	changed |= renameTempVariables(M);
-
 	for (auto& F : M.getFunctionList())
-	for (auto& B : F)
+	for (auto ai = AsmInstruction(&F); ai.isValid();)
 	{
-		auto it = B.begin();
-		while (it != B.end())
+		// Set ASM addresses metadata to instructions.
+		//
+		llvm::MDNode* N = llvm::MDNode::get(
+			M.getContext(),
+			llvm::ValueAsMetadata::get(llvm::ConstantInt::get(
+				llvm::Type::getInt64Ty(M.getContext()),
+				ai.getAddress(),
+				false
+			))
+		);
+		for (auto& i : ai)
 		{
-			// We need to move to the next instruction before potentially
-			// removing the current instruction. Otherwise, the iterator
-			// would become invalid.
-			//
-			auto* inst = &(*it);
-			++it;
-
-			if (_config->isLlvmToAsmInstruction(inst))
-			{
-				AsmInstruction ai(inst);
-				if (cs_insn* insn = ai.getCapstoneInsn())
-				{
-					cs_free(insn, 1);
-				}
-
-				inst->eraseFromParent();
-				changed = true;
-			}
+			i.setMetadata("insn.addr", N);
 		}
+
+		// Remove special instructions.
+		//
+		auto* mapInsn = ai.getLlvmToAsmInstruction();
+		ai = ai.getNext();
+		mapInsn->eraseFromParent();
+		changed = true;
 	}
 
-	if (auto* global = _config->getLlvmToAsmGlobalVariable())
+	// Free Capstone instructions.
+	//
+	auto& insnMap = AsmInstruction::getLlvmToCapstoneInsnMap(&M);
+	for (auto& p : insnMap)
+	{
+		cs_free(p.second, 1);
+	}
+	insnMap.clear();
+
+	// Remove special global variable.
+	//
+	if (auto* global = AsmInstruction::getLlvmToAsmGlobalVariable(&M))
 	{
 		assert(global->getNumUses() == 0);
 		if (global->getNumUses() == 0)
 		{
-			LOG << "erase: " << llvmObjToString(global) << std::endl;
 			global->eraseFromParent();
 			changed = true;
-		}
-	}
-
-	auto* nmd = M.getNamedMetadata("llvmToAsmGlobalVariableName");
-	if (nmd)
-	{
-		nmd->dropAllReferences();
-		nmd->eraseFromParent();
-	}
-
-	return changed;
-}
-
-bool AsmInstructionRemover::renameTempVariables(llvm::Module& M)
-{
-	bool changed = false;
-
-	for (auto& F : M.getFunctionList())
-	for (auto ai = AsmInstruction(&F); ai.isValid(); ai = ai.getNext())
-	{
-		auto addr = ai.getAddress();
-		if (addr.isUndefined())
-		{
-			continue;
-		}
-
-		auto addrStr = addr.toHexString();
-		unsigned cntr = 0;
-
-		for (auto& i : ai)
-		{
-			if (!i.getType()->isVoidTy())
-			{
-				std::string n = "v" + std::to_string(cntr++) + "_" + addrStr;
-				i.setName(n);
-				changed = true;
-			}
+			AsmInstruction::setLlvmToAsmGlobalVariable(&M, nullptr);
 		}
 	}
 
@@ -144,3 +99,4 @@ bool AsmInstructionRemover::renameTempVariables(llvm::Module& M)
 }
 
 } // namespace bin2llvmir
+} // namespace retdec

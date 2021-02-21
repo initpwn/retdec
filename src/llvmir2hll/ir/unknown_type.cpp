@@ -4,10 +4,11 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/unknown_type.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/unknown_type.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -17,11 +18,6 @@ namespace llvmir2hll {
 */
 UnknownType::UnknownType():
 	Type() {}
-
-/**
-* @brief Destructs the type.
-*/
-UnknownType::~UnknownType() {}
 
 ShPtr<Value> UnknownType::clone() {
 	return UnknownType::create();
@@ -57,3 +53,4 @@ void UnknownType::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

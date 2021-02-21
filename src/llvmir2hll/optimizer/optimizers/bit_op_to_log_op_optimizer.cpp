@@ -4,23 +4,24 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/analysis/value_analysis.h"
-#include "llvmir2hll/ir/and_op_expr.h"
-#include "llvmir2hll/ir/bit_and_op_expr.h"
-#include "llvmir2hll/ir/bit_or_op_expr.h"
-#include "llvmir2hll/ir/const_float.h"
-#include "llvmir2hll/ir/const_int.h"
-#include "llvmir2hll/ir/div_op_expr.h"
-#include "llvmir2hll/ir/if_stmt.h"
-#include "llvmir2hll/ir/int_type.h"
-#include "llvmir2hll/ir/mod_op_expr.h"
-#include "llvmir2hll/ir/mul_op_expr.h"
-#include "llvmir2hll/ir/or_op_expr.h"
-#include "llvmir2hll/ir/switch_stmt.h"
-#include "llvmir2hll/ir/while_loop_stmt.h"
-#include "llvmir2hll/optimizer/optimizers/bit_op_to_log_op_optimizer.h"
-#include "llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/analysis/value_analysis.h"
+#include "retdec/llvmir2hll/ir/and_op_expr.h"
+#include "retdec/llvmir2hll/ir/bit_and_op_expr.h"
+#include "retdec/llvmir2hll/ir/bit_or_op_expr.h"
+#include "retdec/llvmir2hll/ir/const_float.h"
+#include "retdec/llvmir2hll/ir/const_int.h"
+#include "retdec/llvmir2hll/ir/div_op_expr.h"
+#include "retdec/llvmir2hll/ir/if_stmt.h"
+#include "retdec/llvmir2hll/ir/int_type.h"
+#include "retdec/llvmir2hll/ir/mod_op_expr.h"
+#include "retdec/llvmir2hll/ir/mul_op_expr.h"
+#include "retdec/llvmir2hll/ir/or_op_expr.h"
+#include "retdec/llvmir2hll/ir/switch_stmt.h"
+#include "retdec/llvmir2hll/ir/while_loop_stmt.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/bit_op_to_log_op_optimizer.h"
+#include "retdec/llvmir2hll/support/debug.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -38,11 +39,6 @@ BitOpToLogOpOptimizer::BitOpToLogOpOptimizer(ShPtr<Module> module,
 	PRECONDITION_NON_NULL(module);
 	PRECONDITION_NON_NULL(va);
 }
-
-/**
-* @brief Destructs the optimizer.
-*/
-BitOpToLogOpOptimizer::~BitOpToLogOpOptimizer() {}
 
 void BitOpToLogOpOptimizer::visit(ShPtr<IfStmt> stmt) {
 	// First of all, visit nested and subsequent statements.
@@ -315,3 +311,4 @@ void BitOpToLogOpOptimizer::tryOptimizeCond(ShPtr<Expression> expr) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

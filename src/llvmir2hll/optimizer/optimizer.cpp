@@ -4,10 +4,11 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/module.h"
-#include "llvmir2hll/optimizer/optimizer.h"
-#include "llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/ir/module.h"
+#include "retdec/llvmir2hll/optimizer/optimizer.h"
+#include "retdec/llvmir2hll/support/debug.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -22,11 +23,6 @@ Optimizer::Optimizer(ShPtr<Module> module):
 	OrderedAllVisitor(), module(module) {
 		PRECONDITION_NON_NULL(module);
 	}
-
-/**
-* @brief Destructs the optimizer.
-*/
-Optimizer::~Optimizer() {}
 
 /**
 * @brief Performs all the optimizations of the specific optimizer.
@@ -77,3 +73,4 @@ void Optimizer::doOptimization() {}
 void Optimizer::doFinalization() {}
 
 } // namespace llvmir2hll
+} // namespace retdec

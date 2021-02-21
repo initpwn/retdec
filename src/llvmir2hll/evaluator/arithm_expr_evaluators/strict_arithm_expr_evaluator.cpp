@@ -4,28 +4,21 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/evaluator/arithm_expr_evaluator_factory.h"
-#include "llvmir2hll/evaluator/arithm_expr_evaluators/strict_arithm_expr_evaluator.h"
-#include "llvmir2hll/ir/ext_cast_expr.h"
-#include "llvmir2hll/ir/fp_to_int_cast_expr.h"
-#include "llvmir2hll/ir/int_to_fp_cast_expr.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/types.h"
+#include <optional>
 
+#include "retdec/llvmir2hll/evaluator/arithm_expr_evaluator_factory.h"
+#include "retdec/llvmir2hll/evaluator/arithm_expr_evaluators/strict_arithm_expr_evaluator.h"
+#include "retdec/llvmir2hll/ir/ext_cast_expr.h"
+#include "retdec/llvmir2hll/ir/fp_to_int_cast_expr.h"
+#include "retdec/llvmir2hll/ir/int_to_fp_cast_expr.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/types.h"
+
+namespace retdec {
 namespace llvmir2hll {
 
 REGISTER_AT_FACTORY("strict", STRICT_ARITHM_EXPR_EVALUATOR_ID,
 	ArithmExprEvaluatorFactory, StrictArithmExprEvaluator::create);
-
-/**
-* @brief Constructs the StrictArithmExprEvaluator.
-*/
-StrictArithmExprEvaluator::StrictArithmExprEvaluator() {}
-
-/**
-* @brief Destructor.
-*/
-StrictArithmExprEvaluator::~StrictArithmExprEvaluator() {}
 
 /**
 * @brief Creates a new StrictArithmExprEvaluator.
@@ -49,7 +42,7 @@ void StrictArithmExprEvaluator::resolveTypesBinaryOp(ConstPair &constPair) {
 		canBeEvaluated = false;
 	}
 
-	if (Maybe<ConstIntPair> constIntPair = castConstPair<ConstInt>(constPair)) {
+	if (std::optional<ConstIntPair> constIntPair = castConstPair<ConstInt>(constPair)) {
 		APSIntPair apsIntPair(getAPSIntsFromConstants(constIntPair));
 		if (apsIntPair.first.getBitWidth() !=
 				apsIntPair.second.getBitWidth()) {
@@ -72,7 +65,7 @@ void StrictArithmExprEvaluator::resolveOpSpecifications(ShPtr<DivOpExpr> expr,
 	}
 
 	// Supported only division without remainder.
-	if (Maybe<ConstIntPair> constIntPair = castConstPair<ConstInt>(constPair)) {
+	if (std::optional<ConstIntPair> constIntPair = castConstPair<ConstInt>(constPair)) {
 		APSIntPair apsIntPair = getAPSIntsFromConstants(constIntPair);
 		ShPtr<ConstInt> remConstInt(ConstInt::create(apsIntPair.first.srem(
 			apsIntPair.second)));
@@ -147,3 +140,4 @@ void StrictArithmExprEvaluator::resolveOverflowForAPFloat(
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

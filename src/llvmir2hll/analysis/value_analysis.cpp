@@ -4,83 +4,84 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/analysis/alias_analysis/alias_analysis.h"
-#include "llvmir2hll/analysis/value_analysis.h"
-#include "llvmir2hll/ir/add_op_expr.h"
-#include "llvmir2hll/ir/address_op_expr.h"
-#include "llvmir2hll/ir/and_op_expr.h"
-#include "llvmir2hll/ir/array_index_op_expr.h"
-#include "llvmir2hll/ir/array_type.h"
-#include "llvmir2hll/ir/assign_op_expr.h"
-#include "llvmir2hll/ir/assign_stmt.h"
-#include "llvmir2hll/ir/bit_and_op_expr.h"
-#include "llvmir2hll/ir/bit_cast_expr.h"
-#include "llvmir2hll/ir/bit_or_op_expr.h"
-#include "llvmir2hll/ir/bit_shl_op_expr.h"
-#include "llvmir2hll/ir/bit_shr_op_expr.h"
-#include "llvmir2hll/ir/bit_xor_op_expr.h"
-#include "llvmir2hll/ir/break_stmt.h"
-#include "llvmir2hll/ir/call_expr.h"
-#include "llvmir2hll/ir/call_stmt.h"
-#include "llvmir2hll/ir/comma_op_expr.h"
-#include "llvmir2hll/ir/const_array.h"
-#include "llvmir2hll/ir/const_bool.h"
-#include "llvmir2hll/ir/const_float.h"
-#include "llvmir2hll/ir/const_int.h"
-#include "llvmir2hll/ir/const_null_pointer.h"
-#include "llvmir2hll/ir/const_string.h"
-#include "llvmir2hll/ir/const_struct.h"
-#include "llvmir2hll/ir/continue_stmt.h"
-#include "llvmir2hll/ir/deref_op_expr.h"
-#include "llvmir2hll/ir/div_op_expr.h"
-#include "llvmir2hll/ir/empty_stmt.h"
-#include "llvmir2hll/ir/eq_op_expr.h"
-#include "llvmir2hll/ir/expression.h"
-#include "llvmir2hll/ir/ext_cast_expr.h"
-#include "llvmir2hll/ir/float_type.h"
-#include "llvmir2hll/ir/for_loop_stmt.h"
-#include "llvmir2hll/ir/fp_to_int_cast_expr.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/goto_stmt.h"
-#include "llvmir2hll/ir/gt_eq_op_expr.h"
-#include "llvmir2hll/ir/gt_op_expr.h"
-#include "llvmir2hll/ir/if_stmt.h"
-#include "llvmir2hll/ir/int_to_fp_cast_expr.h"
-#include "llvmir2hll/ir/int_to_ptr_cast_expr.h"
-#include "llvmir2hll/ir/int_type.h"
-#include "llvmir2hll/ir/lt_eq_op_expr.h"
-#include "llvmir2hll/ir/lt_op_expr.h"
-#include "llvmir2hll/ir/mod_op_expr.h"
-#include "llvmir2hll/ir/module.h"
-#include "llvmir2hll/ir/mul_op_expr.h"
-#include "llvmir2hll/ir/neg_op_expr.h"
-#include "llvmir2hll/ir/neq_op_expr.h"
-#include "llvmir2hll/ir/not_op_expr.h"
-#include "llvmir2hll/ir/or_op_expr.h"
-#include "llvmir2hll/ir/pointer_type.h"
-#include "llvmir2hll/ir/ptr_to_int_cast_expr.h"
-#include "llvmir2hll/ir/return_stmt.h"
-#include "llvmir2hll/ir/statement.h"
-#include "llvmir2hll/ir/string_type.h"
-#include "llvmir2hll/ir/struct_index_op_expr.h"
-#include "llvmir2hll/ir/struct_type.h"
-#include "llvmir2hll/ir/sub_op_expr.h"
-#include "llvmir2hll/ir/switch_stmt.h"
-#include "llvmir2hll/ir/ternary_op_expr.h"
-#include "llvmir2hll/ir/trunc_cast_expr.h"
-#include "llvmir2hll/ir/ufor_loop_stmt.h"
-#include "llvmir2hll/ir/unknown_type.h"
-#include "llvmir2hll/ir/unreachable_stmt.h"
-#include "llvmir2hll/ir/var_def_stmt.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/ir/void_type.h"
-#include "llvmir2hll/ir/while_loop_stmt.h"
-#include "llvmir2hll/support/debug.h"
-#include "tl-cpputils/container.h"
+#include "retdec/llvmir2hll/analysis/alias_analysis/alias_analysis.h"
+#include "retdec/llvmir2hll/analysis/value_analysis.h"
+#include "retdec/llvmir2hll/ir/add_op_expr.h"
+#include "retdec/llvmir2hll/ir/address_op_expr.h"
+#include "retdec/llvmir2hll/ir/and_op_expr.h"
+#include "retdec/llvmir2hll/ir/array_index_op_expr.h"
+#include "retdec/llvmir2hll/ir/array_type.h"
+#include "retdec/llvmir2hll/ir/assign_op_expr.h"
+#include "retdec/llvmir2hll/ir/assign_stmt.h"
+#include "retdec/llvmir2hll/ir/bit_and_op_expr.h"
+#include "retdec/llvmir2hll/ir/bit_cast_expr.h"
+#include "retdec/llvmir2hll/ir/bit_or_op_expr.h"
+#include "retdec/llvmir2hll/ir/bit_shl_op_expr.h"
+#include "retdec/llvmir2hll/ir/bit_shr_op_expr.h"
+#include "retdec/llvmir2hll/ir/bit_xor_op_expr.h"
+#include "retdec/llvmir2hll/ir/break_stmt.h"
+#include "retdec/llvmir2hll/ir/call_expr.h"
+#include "retdec/llvmir2hll/ir/call_stmt.h"
+#include "retdec/llvmir2hll/ir/comma_op_expr.h"
+#include "retdec/llvmir2hll/ir/const_array.h"
+#include "retdec/llvmir2hll/ir/const_bool.h"
+#include "retdec/llvmir2hll/ir/const_float.h"
+#include "retdec/llvmir2hll/ir/const_int.h"
+#include "retdec/llvmir2hll/ir/const_null_pointer.h"
+#include "retdec/llvmir2hll/ir/const_string.h"
+#include "retdec/llvmir2hll/ir/const_struct.h"
+#include "retdec/llvmir2hll/ir/continue_stmt.h"
+#include "retdec/llvmir2hll/ir/deref_op_expr.h"
+#include "retdec/llvmir2hll/ir/div_op_expr.h"
+#include "retdec/llvmir2hll/ir/empty_stmt.h"
+#include "retdec/llvmir2hll/ir/eq_op_expr.h"
+#include "retdec/llvmir2hll/ir/expression.h"
+#include "retdec/llvmir2hll/ir/ext_cast_expr.h"
+#include "retdec/llvmir2hll/ir/float_type.h"
+#include "retdec/llvmir2hll/ir/for_loop_stmt.h"
+#include "retdec/llvmir2hll/ir/fp_to_int_cast_expr.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/goto_stmt.h"
+#include "retdec/llvmir2hll/ir/gt_eq_op_expr.h"
+#include "retdec/llvmir2hll/ir/gt_op_expr.h"
+#include "retdec/llvmir2hll/ir/if_stmt.h"
+#include "retdec/llvmir2hll/ir/int_to_fp_cast_expr.h"
+#include "retdec/llvmir2hll/ir/int_to_ptr_cast_expr.h"
+#include "retdec/llvmir2hll/ir/int_type.h"
+#include "retdec/llvmir2hll/ir/lt_eq_op_expr.h"
+#include "retdec/llvmir2hll/ir/lt_op_expr.h"
+#include "retdec/llvmir2hll/ir/mod_op_expr.h"
+#include "retdec/llvmir2hll/ir/module.h"
+#include "retdec/llvmir2hll/ir/mul_op_expr.h"
+#include "retdec/llvmir2hll/ir/neg_op_expr.h"
+#include "retdec/llvmir2hll/ir/neq_op_expr.h"
+#include "retdec/llvmir2hll/ir/not_op_expr.h"
+#include "retdec/llvmir2hll/ir/or_op_expr.h"
+#include "retdec/llvmir2hll/ir/pointer_type.h"
+#include "retdec/llvmir2hll/ir/ptr_to_int_cast_expr.h"
+#include "retdec/llvmir2hll/ir/return_stmt.h"
+#include "retdec/llvmir2hll/ir/statement.h"
+#include "retdec/llvmir2hll/ir/string_type.h"
+#include "retdec/llvmir2hll/ir/struct_index_op_expr.h"
+#include "retdec/llvmir2hll/ir/struct_type.h"
+#include "retdec/llvmir2hll/ir/sub_op_expr.h"
+#include "retdec/llvmir2hll/ir/switch_stmt.h"
+#include "retdec/llvmir2hll/ir/ternary_op_expr.h"
+#include "retdec/llvmir2hll/ir/trunc_cast_expr.h"
+#include "retdec/llvmir2hll/ir/ufor_loop_stmt.h"
+#include "retdec/llvmir2hll/ir/unknown_type.h"
+#include "retdec/llvmir2hll/ir/unreachable_stmt.h"
+#include "retdec/llvmir2hll/ir/var_def_stmt.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/ir/void_type.h"
+#include "retdec/llvmir2hll/ir/while_loop_stmt.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/utils/container.h"
 
-using tl_cpputils::addToSet;
-using tl_cpputils::hasItem;
+using retdec::utils::addToSet;
+using retdec::utils::hasItem;
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -93,21 +94,6 @@ ValueData::ValueData(): dirReadVars(), dirWrittenVars(), dirAllVars(),
 	containsArrayAccesses(false), containsStructAccesses(false) {}
 
 /**
-* @brief Constructs a new ValueData object from @a other.
-*/
-ValueData::ValueData(const ValueData &other) = default;
-
-/**
-* @brief Destructs the object.
-*/
-ValueData::~ValueData() {}
-
-/**
-* @brief Assigns @a other to the current object.
-*/
-ValueData &ValueData::operator=(const ValueData &other) = default;
-
-/**
 * @brief Returns @c true if the current object is equal to @a other, @c false
 *        otherwise.
 */
@@ -117,11 +103,11 @@ bool ValueData::operator==(const ValueData &other) const {
 		dirAllVars == other.dirAllVars &&
 		dirNumOfVarUses == other.dirNumOfVarUses &&
 		mayBeReadVars == other.mayBeReadVars &&
-		mayBeWrittenVars == mayBeWrittenVars &&
-		mayBeAccessedVars == mayBeAccessedVars &&
+		mayBeWrittenVars == other.mayBeWrittenVars &&
+		mayBeAccessedVars == other.mayBeAccessedVars &&
 		mustBeReadVars == other.mustBeReadVars &&
-		mustBeWrittenVars == mustBeWrittenVars &&
-		mustBeAccessedVars == mustBeAccessedVars &&
+		mustBeWrittenVars == other.mustBeWrittenVars &&
+		mustBeAccessedVars == other.mustBeAccessedVars &&
 		calls == other.calls &&
 		addressTakenVars == other.addressTakenVars &&
 		containsDerefs == other.containsDerefs &&
@@ -575,11 +561,6 @@ ValueAnalysis::ValueAnalysis(ShPtr<AliasAnalysis> aliasAnalysis,
 	OrderedAllVisitor(false, false), Caching(enableCaching),
 	aliasAnalysis(aliasAnalysis), valueData(), writing(false),
 	removingFromCache(false) {}
-
-/**
-* @brief Destructs the visitor.
-*/
-ValueAnalysis::~ValueAnalysis() {}
 
 /**
 * @brief Returns information about the given value.
@@ -1613,3 +1594,4 @@ void ValueAnalysis::visit(ShPtr<ConstStruct> constant) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

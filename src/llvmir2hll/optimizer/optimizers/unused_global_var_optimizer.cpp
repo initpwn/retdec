@@ -4,16 +4,17 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/global_var_def.h"
-#include "llvmir2hll/ir/module.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/optimizer/optimizers/unused_global_var_optimizer.h"
-#include "llvmir2hll/support/debug.h"
-#include "tl-cpputils/container.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/global_var_def.h"
+#include "retdec/llvmir2hll/ir/module.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/unused_global_var_optimizer.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/utils/container.h"
 
-using tl_cpputils::hasItem;
+using retdec::utils::hasItem;
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -28,11 +29,6 @@ UnusedGlobalVarOptimizer::UnusedGlobalVarOptimizer(ShPtr<Module> module):
 	Optimizer(module), globalVars(module->getGlobalVars()) {
 		PRECONDITION_NON_NULL(module);
 	}
-
-/**
-* @brief Destructs the optimizer.
-*/
-UnusedGlobalVarOptimizer::~UnusedGlobalVarOptimizer() {}
 
 void UnusedGlobalVarOptimizer::doOptimization() {
 	computeUsedGlobalVars();
@@ -90,3 +86,4 @@ bool UnusedGlobalVarOptimizer::isUsed(ShPtr<Variable> var) const {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

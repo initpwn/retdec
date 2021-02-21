@@ -4,11 +4,12 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/const_null_pointer.h"
-#include "llvmir2hll/ir/pointer_type.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/const_null_pointer.h"
+#include "retdec/llvmir2hll/ir/pointer_type.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -18,11 +19,6 @@ namespace llvmir2hll {
 */
 ConstNullPointer::ConstNullPointer(ShPtr<PointerType> type):
 	Constant(), type(type) {}
-
-/**
-* @brief Destructs the constant.
-*/
-ConstNullPointer::~ConstNullPointer() {}
 
 ShPtr<Value> ConstNullPointer::clone() {
 	ShPtr<ConstNullPointer> constPointer(ConstNullPointer::create(type));
@@ -62,3 +58,4 @@ void ConstNullPointer::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

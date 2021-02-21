@@ -4,15 +4,16 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/analysis/def_use_analysis.h"
-#include "llvmir2hll/analysis/use_def_analysis.h"
-#include "llvmir2hll/graphs/cfg/cfg_builder.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/module.h"
-#include "llvmir2hll/ir/statement.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/analysis/def_use_analysis.h"
+#include "retdec/llvmir2hll/analysis/use_def_analysis.h"
+#include "retdec/llvmir2hll/graphs/cfg/cfg_builder.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/module.h"
+#include "retdec/llvmir2hll/ir/statement.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/support/debug.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -44,11 +45,6 @@ void UseDefChains::debugPrint() {
 */
 UseDefAnalysis::UseDefAnalysis(ShPtr<Module> module):
 	module(module) {}
-
-/**
-* @brief Destructs the analysis.
-*/
-UseDefAnalysis::~UseDefAnalysis() {}
 
 /**
 * @brief Returns use-def chains for the given function.
@@ -98,3 +94,4 @@ void UseDefAnalysis::computeUseDefChains(ShPtr<UseDefChains> udcs,
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

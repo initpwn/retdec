@@ -4,20 +4,11 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/expression.h"
-#include "llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/ir/expression.h"
+#include "retdec/llvmir2hll/support/debug.h"
 
+namespace retdec {
 namespace llvmir2hll {
-
-/**
-* @brief Constructs a new expression.
-*/
-Expression::Expression() {}
-
-/**
-* @brief Destructs the expression.
-*/
-Expression::~Expression() {}
 
 /**
 * @brief Replaces @a oldExpr with @a newExpr.
@@ -56,3 +47,4 @@ void Expression::replaceExpression(ShPtr<Expression> oldExpr,
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

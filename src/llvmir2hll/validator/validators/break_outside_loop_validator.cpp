@@ -5,28 +5,19 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/break_stmt.h"
-#include "llvmir2hll/ir/continue_stmt.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/utils/ir.h"
-#include "llvmir2hll/validator/validator_factory.h"
-#include "llvmir2hll/validator/validators/break_outside_loop_validator.h"
+#include "retdec/llvmir2hll/ir/break_stmt.h"
+#include "retdec/llvmir2hll/ir/continue_stmt.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/utils/ir.h"
+#include "retdec/llvmir2hll/validator/validator_factory.h"
+#include "retdec/llvmir2hll/validator/validators/break_outside_loop_validator.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 REGISTER_AT_FACTORY("BreakOutsideLoop", BREAK_OUTSIDE_LOOP_VALIDATOR_ID, ValidatorFactory,
 	BreakOutsideLoopValidator::create);
-
-/**
-* @brief Constructs a new validator.
-*/
-BreakOutsideLoopValidator::BreakOutsideLoopValidator(): Validator() {}
-
-/**
-* @brief Destructs the validator.
-*/
-BreakOutsideLoopValidator::~BreakOutsideLoopValidator() {}
 
 /**
 * @brief Creates a new validator.
@@ -44,8 +35,10 @@ void BreakOutsideLoopValidator::visit(ShPtr<BreakStmt> stmt) {
 	// this end, get the innermost loop or switch.
 	ShPtr<Statement> innLoopOrSwitch(getInnermostLoopOrSwitch(stmt));
 	if (!innLoopOrSwitch) {
-		validationError("In ", func->getName(), "(), found `", stmt,
-			"` outside of a loop or a switch statement.");
+		std::ostringstream stmtStr;
+		stmtStr << stmt;
+		validationError("In " + func->getName() + "(), found `" + stmtStr.str()
+			+ "` outside of a loop or a switch statement.");
 	}
 	OrderedAllVisitor::visit(stmt);
 }
@@ -55,10 +48,13 @@ void BreakOutsideLoopValidator::visit(ShPtr<ContinueStmt> stmt) {
 	// innermost loop.
 	ShPtr<Statement> innLoop(getInnermostLoop(stmt));
 	if (!innLoop) {
-		validationError("In ", func->getName(), "(), found `", stmt,
-			"` outside of a loop.");
+		std::ostringstream stmtStr;
+		stmtStr << stmt;
+		validationError("In " + func->getName() + "(), found `" + stmtStr.str()
+			+"` outside of a loop.");
 	}
 	OrderedAllVisitor::visit(stmt);
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

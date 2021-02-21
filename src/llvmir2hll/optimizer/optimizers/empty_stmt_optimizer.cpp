@@ -4,10 +4,11 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/empty_stmt.h"
-#include "llvmir2hll/optimizer/optimizers/empty_stmt_optimizer.h"
-#include "llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/ir/empty_stmt.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/empty_stmt_optimizer.h"
+#include "retdec/llvmir2hll/support/debug.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -23,11 +24,6 @@ EmptyStmtOptimizer::EmptyStmtOptimizer(ShPtr<Module> module):
 		PRECONDITION_NON_NULL(module);
 	}
 
-/**
-* @brief Destructs the optimizer.
-*/
-EmptyStmtOptimizer::~EmptyStmtOptimizer() {}
-
 void EmptyStmtOptimizer::visit(ShPtr<EmptyStmt> stmt) {
 	// We have to store the statement's successor because
 	// Statement::removeStatement() resets it.
@@ -37,3 +33,4 @@ void EmptyStmtOptimizer::visit(ShPtr<EmptyStmt> stmt) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

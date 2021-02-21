@@ -4,23 +4,26 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/evaluator/arithm_expr_evaluator_factory.h"
-#include "llvmir2hll/evaluator/arithm_expr_evaluators/c_arithm_expr_evaluator.h"
-#include "llvmir2hll/ir/binary_op_expr.h"
-#include "llvmir2hll/ir/bit_cast_expr.h"
-#include "llvmir2hll/ir/div_op_expr.h"
-#include "llvmir2hll/ir/ext_cast_expr.h"
-#include "llvmir2hll/ir/float_type.h"
-#include "llvmir2hll/ir/fp_to_int_cast_expr.h"
-#include "llvmir2hll/ir/int_to_fp_cast_expr.h"
-#include "llvmir2hll/ir/int_type.h"
-#include "llvmir2hll/ir/mod_op_expr.h"
-#include "llvmir2hll/ir/trunc_cast_expr.h"
-#include "llvmir2hll/ir/type.h"
-#include "llvmir2hll/pattern/pattern_finders/api_call/api_call_info.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/types.h"
+#include <optional>
 
+#include "retdec/llvmir2hll/evaluator/arithm_expr_evaluator_factory.h"
+#include "retdec/llvmir2hll/evaluator/arithm_expr_evaluators/c_arithm_expr_evaluator.h"
+#include "retdec/llvmir2hll/ir/binary_op_expr.h"
+#include "retdec/llvmir2hll/ir/bit_cast_expr.h"
+#include "retdec/llvmir2hll/ir/div_op_expr.h"
+#include "retdec/llvmir2hll/ir/ext_cast_expr.h"
+#include "retdec/llvmir2hll/ir/float_type.h"
+#include "retdec/llvmir2hll/ir/fp_to_int_cast_expr.h"
+#include "retdec/llvmir2hll/ir/int_to_fp_cast_expr.h"
+#include "retdec/llvmir2hll/ir/int_type.h"
+#include "retdec/llvmir2hll/ir/mod_op_expr.h"
+#include "retdec/llvmir2hll/ir/trunc_cast_expr.h"
+#include "retdec/llvmir2hll/ir/type.h"
+#include "retdec/llvmir2hll/pattern/pattern_finders/api_call/api_call_info.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/types.h"
+
+namespace retdec {
 namespace llvmir2hll {
 
 namespace {
@@ -118,7 +121,7 @@ bool hasOperandsSameBitWidth(const ArithmExprEvaluator::APSIntPair &apsIntPair) 
 * @param[in, out] constPair Pair of constants.
 */
 void tryConvertBoolBoolToInt(ArithmExprEvaluator::ConstPair &constPair) {
-	if (Maybe<ArithmExprEvaluator::ConstBoolPair> constBoolPair =
+	if (std::optional<ArithmExprEvaluator::ConstBoolPair> constBoolPair =
 			ArithmExprEvaluator::castConstPair<ConstBool>(constPair)) {
 		constPair.first = ConstInt::create(constBoolPair->first->getValue(),
 			DEFAULT_INT_BIT_WIDTH);
@@ -180,16 +183,6 @@ REGISTER_AT_FACTORY("c", C_ARITHM_EXPR_EVALUATOR_ID,
 	ArithmExprEvaluatorFactory, CArithmExprEvaluator::create);
 
 /**
-* @brief Constructs the CArithmExprEvaluator.
-*/
-CArithmExprEvaluator::CArithmExprEvaluator() {}
-
-/**
-* @brief Destructor.
-*/
-CArithmExprEvaluator::~CArithmExprEvaluator() {}
-
-/**
 * @brief Creates a new CArithmExprEvaluator.
 */
 ShPtr<ArithmExprEvaluator> CArithmExprEvaluator::create() {
@@ -226,7 +219,7 @@ void CArithmExprEvaluator::resolveTypesBinaryOp(ConstPair &constPair) {
 	}
 
 	// Problems with integer bit width and signed/unsigned types.
-	if (Maybe<ConstIntPair> constIntPair = castConstPair<ConstInt>(constPair)) {
+	if (std::optional<ConstIntPair> constIntPair = castConstPair<ConstInt>(constPair)) {
 		APSIntPair apsIntPair(getAPSIntsFromConstants(constIntPair));
 		if (isSignedOrUnsignedOperands(apsIntPair) &&
 				!hasOperandsSameBitWidth(apsIntPair)) {
@@ -268,7 +261,7 @@ void CArithmExprEvaluator::resolveTypesBinaryOp(ConstPair &constPair) {
 	}
 
 	// Conversion to same float semantics (same size).
-	if (Maybe<ConstFloatPair> constFloatPair = castConstPair<ConstFloat>(
+	if (std::optional<ConstFloatPair> constFloatPair = castConstPair<ConstFloat>(
 			constPair)) {
 		APFloatPair apFloatPair = getAPFloatsFromConstants(constFloatPair);
 		convertOperandsToSameSemantics(apFloatPair);
@@ -439,3 +432,4 @@ void CArithmExprEvaluator::resolveOverflowForAPFloat(
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

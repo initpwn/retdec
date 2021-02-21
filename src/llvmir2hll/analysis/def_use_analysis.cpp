@@ -4,20 +4,21 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/analysis/def_use_analysis.h"
-#include "llvmir2hll/analysis/value_analysis.h"
-#include "llvmir2hll/analysis/var_uses_visitor.h"
-#include "llvmir2hll/graphs/cfg/cfg_builders/recursive_cfg_builder.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/module.h"
-#include "llvmir2hll/ir/statement.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/support/debug.h"
-#include "tl-cpputils/container.h"
+#include "retdec/llvmir2hll/analysis/def_use_analysis.h"
+#include "retdec/llvmir2hll/analysis/value_analysis.h"
+#include "retdec/llvmir2hll/analysis/var_uses_visitor.h"
+#include "retdec/llvmir2hll/graphs/cfg/cfg_builders/recursive_cfg_builder.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/module.h"
+#include "retdec/llvmir2hll/ir/statement.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/utils/container.h"
 
-using tl_cpputils::addToSet;
-using tl_cpputils::hasItem;
+using retdec::utils::addToSet;
+using retdec::utils::hasItem;
 
+namespace retdec {
 namespace llvmir2hll {
 
 namespace {
@@ -92,11 +93,6 @@ DefUseAnalysis::DefUseAnalysis(ShPtr<Module> module,
 		this->vuv = VarUsesVisitor::create(this->va);
 	}
 }
-
-/**
-* @brief Destructs the analysis.
-*/
-DefUseAnalysis::~DefUseAnalysis() {}
 
 /**
 * @brief Returns def-use chains for the given function.
@@ -466,3 +462,4 @@ ShPtr<Variable> DefUseAnalysis::getDefVarInStmt(ShPtr<Statement> stmt) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

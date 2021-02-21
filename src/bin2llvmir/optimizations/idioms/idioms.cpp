@@ -4,26 +4,25 @@
  * @copyright (c) 2017 Avast Software, licensed under the MIT license
  */
 
-#include <iostream>
-
-#include "bin2llvmir/optimizations/idioms/idioms.h"
-#include "bin2llvmir/optimizations/idioms/idioms_borland.h"
-#include "bin2llvmir/optimizations/idioms/idioms_common.h"
-#include "bin2llvmir/optimizations/idioms/idioms_gcc.h"
-#include "bin2llvmir/optimizations/idioms/idioms_intel.h"
-#include "bin2llvmir/optimizations/idioms/idioms_llvm.h"
-#include "bin2llvmir/optimizations/idioms/idioms_owatcom.h"
-#include "bin2llvmir/optimizations/idioms/idioms_vstudio.h"
+#include "retdec/bin2llvmir/optimizations/idioms/idioms.h"
+#include "retdec/bin2llvmir/optimizations/idioms/idioms_borland.h"
+#include "retdec/bin2llvmir/optimizations/idioms/idioms_common.h"
+#include "retdec/bin2llvmir/optimizations/idioms/idioms_gcc.h"
+#include "retdec/bin2llvmir/optimizations/idioms/idioms_intel.h"
+#include "retdec/bin2llvmir/optimizations/idioms/idioms_llvm.h"
+#include "retdec/bin2llvmir/optimizations/idioms/idioms_owatcom.h"
+#include "retdec/bin2llvmir/optimizations/idioms/idioms_vstudio.h"
 
 using namespace llvm;
 
+namespace retdec {
 namespace bin2llvmir {
 
 struct GlobalOpt;
 
 char Idioms::ID = 0;
 RegisterPass<Idioms> IdiomsRegistered(
-		"idioms",
+		"retdec-idioms",
 		"Instruction idioms optimization",
 		false,
 		false);
@@ -32,13 +31,6 @@ RegisterPass<Idioms> IdiomsRegistered(
  * Constructor
  */
 Idioms::Idioms(): FunctionPass(ID) {
-	m_idioms = nullptr;
-}
-
-/**
- * Destructor
- */
-Idioms::~Idioms() {
 }
 
 /**
@@ -58,8 +50,7 @@ bool Idioms::doInitialization(Module &M) {
  * @return always true
  */
 bool Idioms::doFinalization(Module &M) {
-	if (m_idioms)
-		delete m_idioms;
+	delete m_idioms;
 
 	return true;
 }
@@ -83,23 +74,13 @@ bool Idioms::runOnFunction(Function & f) {
 }
 
 /**
- * Info about idiom analysis passe dependency
- *
- * @param AU AnalysisUsage
- */
-void Idioms::getAnalysisUsage(AnalysisUsage &AU) const
-{
-
-}
-
-/**
  * Get instance of idioms collection used depending on compiler
  *
  * @param M Module used
  * @return idioms collection
  *
  * TODO matula: Idiom analysis still has its own architecture and compiler representations.
- * It could/should use the representations from retdec-config.
+ * It could/should use the representations from retdec::config.
  */
 IdiomsAnalysis * Idioms::getCompilerAnalysis(Module &M)
 {
@@ -142,7 +123,8 @@ IdiomsAnalysis * Idioms::getCompilerAnalysis(Module &M)
 	}
 
 	// Return initialized instruction idioms analyser.
-	return new IdiomsAnalysis(&M, m_config, i_cc, i_arch);
+	return new IdiomsAnalysis(&M, i_cc, i_arch);
 }
 
 } // namespace bin2llvmir
+} // namespace retdec

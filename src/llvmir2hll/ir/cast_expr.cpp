@@ -4,9 +4,10 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/cast_expr.h"
-#include "llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/ir/cast_expr.h"
+#include "retdec/llvmir2hll/support/debug.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -17,11 +18,6 @@ CastExpr::CastExpr(ShPtr<Expression> op, ShPtr<Type> dstType):
 		PRECONDITION_NON_NULL(op);
 		PRECONDITION_NON_NULL(dstType);
 }
-
-/**
-* @brief Destructs the operator.
-*/
-CastExpr::~CastExpr() {}
 
 ShPtr<Type> CastExpr::getType() const {
 	return dstType;
@@ -88,3 +84,4 @@ void CastExpr::update(ShPtr<Value> subject, ShPtr<Value> arg) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

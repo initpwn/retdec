@@ -4,40 +4,40 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/analysis/used_vars_visitor.h"
-#include "llvmir2hll/ir/address_op_expr.h"
-#include "llvmir2hll/ir/assign_stmt.h"
-#include "llvmir2hll/ir/call_expr.h"
-#include "llvmir2hll/ir/call_stmt.h"
-#include "llvmir2hll/ir/cast_expr.h"
-#include "llvmir2hll/ir/const_bool.h"
-#include "llvmir2hll/ir/deref_op_expr.h"
-#include "llvmir2hll/ir/empty_stmt.h"
-#include "llvmir2hll/ir/for_loop_stmt.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/module.h"
-#include "llvmir2hll/ir/not_op_expr.h"
-#include "llvmir2hll/ir/return_stmt.h"
-#include "llvmir2hll/ir/statement.h"
-#include "llvmir2hll/ir/switch_stmt.h"
-#include "llvmir2hll/ir/ufor_loop_stmt.h"
-#include "llvmir2hll/ir/unreachable_stmt.h"
-#include "llvmir2hll/ir/var_def_stmt.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/ir/while_loop_stmt.h"
-#include "llvmir2hll/obtainer/calls_obtainer.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/variable_replacer.h"
-#include "llvmir2hll/utils/ir.h"
-#include "tl-cpputils/container.h"
-#include "tl-cpputils/string.h"
+#include "retdec/llvmir2hll/analysis/used_vars_visitor.h"
+#include "retdec/llvmir2hll/ir/address_op_expr.h"
+#include "retdec/llvmir2hll/ir/assign_stmt.h"
+#include "retdec/llvmir2hll/ir/call_expr.h"
+#include "retdec/llvmir2hll/ir/call_stmt.h"
+#include "retdec/llvmir2hll/ir/cast_expr.h"
+#include "retdec/llvmir2hll/ir/const_bool.h"
+#include "retdec/llvmir2hll/ir/deref_op_expr.h"
+#include "retdec/llvmir2hll/ir/empty_stmt.h"
+#include "retdec/llvmir2hll/ir/for_loop_stmt.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/module.h"
+#include "retdec/llvmir2hll/ir/not_op_expr.h"
+#include "retdec/llvmir2hll/ir/return_stmt.h"
+#include "retdec/llvmir2hll/ir/statement.h"
+#include "retdec/llvmir2hll/ir/switch_stmt.h"
+#include "retdec/llvmir2hll/ir/ufor_loop_stmt.h"
+#include "retdec/llvmir2hll/ir/unreachable_stmt.h"
+#include "retdec/llvmir2hll/ir/var_def_stmt.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/ir/while_loop_stmt.h"
+#include "retdec/llvmir2hll/obtainer/calls_obtainer.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/variable_replacer.h"
+#include "retdec/llvmir2hll/utils/ir.h"
+#include "retdec/utils/container.h"
+#include "retdec/utils/string.h"
 
-using tl_cpputils::hasItem;
-using tl_cpputils::isLowerThanCaseInsensitive;
-
-namespace llvmir2hll {
+using retdec::utils::hasItem;
+using retdec::utils::isLowerThanCaseInsensitive;
 
 namespace {
+
+using namespace retdec::llvmir2hll;
 
 /**
 * @brief Compares the two given functions by their name.
@@ -89,10 +89,16 @@ ShPtr<Expression> skipUnaryExpr(ShPtr<Expression> expr) {
 
 /**
 * @brief Sorts the given vector by the name of its elements (case-insensitively).
+* @note This one function is defined outside the namespace below with explicit
+*       namespace declarations to help Doxygen and prevent it from generating
+*       "no matching file member found for" warnings.
 */
-void sortByName(FuncVector &vec) {
+void retdec::llvmir2hll::sortByName(retdec::llvmir2hll::FuncVector &vec) {
 	std::sort(vec.begin(), vec.end(), compareFuncs);
 }
+
+namespace retdec {
+namespace llvmir2hll {
 
 /**
 * @brief Sorts the given vector by the name of its elements (case-insensitively).
@@ -258,7 +264,7 @@ StmtVector removeVarDefOrAssignStatement(ShPtr<Statement> stmt,
 	//
 
 	// Insert the first found call.
-	auto callStmt = CallStmt::create(*calls.begin());
+	auto callStmt = CallStmt::create(*calls.begin(), nullptr, stmt->getAddress());
 	callStmt->setMetadata(stmt->getMetadata());
 	Statement::replaceStatement(stmt, callStmt);
 	newStmts.push_back(callStmt);
@@ -267,7 +273,7 @@ StmtVector removeVarDefOrAssignStatement(ShPtr<Statement> stmt,
 	// Insert the remaining calls.
 	auto lastCallStmt = callStmt;
 	for (auto call : calls) {
-		callStmt = CallStmt::create(call);
+		callStmt = CallStmt::create(call, nullptr, stmt->getAddress());
 		lastCallStmt->appendStatement(callStmt);
 		newStmts.push_back(callStmt);
 		lastCallStmt = callStmt;
@@ -484,7 +490,7 @@ bool isDefOfVar(ShPtr<Statement> stmt, ShPtr<Variable> var) {
 * places it in a proper place so that all VarDefStmts at the beginning of @a
 * func are sorted alphabetically.
 *
-* If @a var is already a local function of @a func, this function does nothing.
+* If @a var is already a local variable of @a func, this function does nothing.
 *
 * @par Preconditions
 *  - @a func is a definition, not a declaration
@@ -511,14 +517,15 @@ void addLocalVarToFunc(ShPtr<Variable> var, ShPtr<Function> func,
 		stmt = stmt->getSuccessor();
 	}
 	// ...then, we place a VarDefStmt of var into that position.
-	stmt->prependStatement(VarDefStmt::create(var, init));
+	stmt->prependStatement(
+		VarDefStmt::create(var, init, nullptr, func->getStartAddress()));
 }
 
 /**
 * @brief Converts the given global variable @a var into a local variable of @a
 *        func, possibly with the given initializer @a init.
 *
-* The converted function gets the same name as the global variable.
+* The converted variable gets the same name as the global variable.
 *
 * @par Preconditions
 *  - @a var is a global variable
@@ -536,3 +543,4 @@ void convertGlobalVarToLocalVarInFunc(ShPtr<Variable> var, ShPtr<Function> func,
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

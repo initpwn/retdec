@@ -4,34 +4,36 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/analysis/value_analysis.h"
-#include "llvmir2hll/analysis/var_uses_visitor.h"
-#include "llvmir2hll/graphs/cfg/cfg.h"
-#include "llvmir2hll/graphs/cfg/cfg_traversals/lhs_rhs_uses_cfg_traversal.h"
-#include "llvmir2hll/graphs/cg/cg_builder.h"
-#include "llvmir2hll/ir/assign_stmt.h"
-#include "llvmir2hll/ir/call_expr.h"
-#include "llvmir2hll/ir/call_stmt.h"
-#include "llvmir2hll/ir/const_array.h"
-#include "llvmir2hll/ir/const_string.h"
-#include "llvmir2hll/ir/const_struct.h"
-#include "llvmir2hll/ir/for_loop_stmt.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/module.h"
-#include "llvmir2hll/ir/return_stmt.h"
-#include "llvmir2hll/ir/statement.h"
-#include "llvmir2hll/ir/ufor_loop_stmt.h"
-#include "llvmir2hll/ir/var_def_stmt.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/ir/while_loop_stmt.h"
-#include "llvmir2hll/obtainer/call_info_obtainer.h"
-#include "llvmir2hll/optimizer/optimizers/simple_copy_propagation_optimizer.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/utils/ir.h"
-#include "tl-cpputils/container.h"
+#include "retdec/llvmir2hll/analysis/value_analysis.h"
+#include "retdec/llvmir2hll/analysis/var_uses_visitor.h"
+#include "retdec/llvmir2hll/graphs/cfg/cfg.h"
+#include "retdec/llvmir2hll/graphs/cfg/cfg_builders/non_recursive_cfg_builder.h"
+#include "retdec/llvmir2hll/graphs/cfg/cfg_traversals/lhs_rhs_uses_cfg_traversal.h"
+#include "retdec/llvmir2hll/graphs/cg/cg_builder.h"
+#include "retdec/llvmir2hll/ir/assign_stmt.h"
+#include "retdec/llvmir2hll/ir/call_expr.h"
+#include "retdec/llvmir2hll/ir/call_stmt.h"
+#include "retdec/llvmir2hll/ir/const_array.h"
+#include "retdec/llvmir2hll/ir/const_string.h"
+#include "retdec/llvmir2hll/ir/const_struct.h"
+#include "retdec/llvmir2hll/ir/for_loop_stmt.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/module.h"
+#include "retdec/llvmir2hll/ir/return_stmt.h"
+#include "retdec/llvmir2hll/ir/statement.h"
+#include "retdec/llvmir2hll/ir/ufor_loop_stmt.h"
+#include "retdec/llvmir2hll/ir/var_def_stmt.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/ir/while_loop_stmt.h"
+#include "retdec/llvmir2hll/obtainer/call_info_obtainer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/simple_copy_propagation_optimizer.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/utils/ir.h"
+#include "retdec/utils/container.h"
 
-using tl_cpputils::hasItem;
+using retdec::utils::hasItem;
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -46,17 +48,13 @@ namespace llvmir2hll {
 */
 SimpleCopyPropagationOptimizer::SimpleCopyPropagationOptimizer(ShPtr<Module> module,
 	ShPtr<ValueAnalysis> va, ShPtr<CallInfoObtainer> cio):
-		FuncOptimizer(module), va(va), cio(cio), vuv(),
+		FuncOptimizer(module), cfgBuilder(NonRecursiveCFGBuilder::create()),
+		va(va), cio(cio), vuv(),
 		globalVars(module->getGlobalVars()), currCFG(), triedVars() {
 			PRECONDITION_NON_NULL(module);
 			PRECONDITION_NON_NULL(va);
 			PRECONDITION_NON_NULL(cio);
 	}
-
-/**
-* @brief Destructs the optimizer.
-*/
-SimpleCopyPropagationOptimizer::~SimpleCopyPropagationOptimizer() {}
 
 void SimpleCopyPropagationOptimizer::doOptimization() {
 	// Initialization.
@@ -64,14 +62,13 @@ void SimpleCopyPropagationOptimizer::doOptimization() {
 	// surprisingly speeds up the optimization).
 	va->clearCache();
 	va->initAliasAnalysis(module);
-	cio->init(CGBuilder::getCG(module), va);
 	vuv = VarUsesVisitor::create(va, true, module);
 
 	FuncOptimizer::doOptimization();
 }
 
 void SimpleCopyPropagationOptimizer::runOnFunction(ShPtr<Function> func) {
-	currCFG = cio->getCFGForFunc(func);
+	currCFG = cfgBuilder->getCFG(func);
 	triedVars.clear();
 
 	FuncOptimizer::runOnFunction(func);
@@ -123,7 +120,7 @@ void SimpleCopyPropagationOptimizer::tryOptimization(ShPtr<Statement> stmt) {
 
 	if (lhsVar->isExternal()) {
 		// We do not want to optimize external variables (used in a volatile
-		// load/store, see #1146).
+		// load/store).
 		return;
 	}
 
@@ -155,8 +152,6 @@ void SimpleCopyPropagationOptimizer::tryOptimization(ShPtr<Statement> stmt) {
 	// description).
 	if (stmtData->hasCalls()) {
 		tryOptimizationCase1(stmt, lhsVar, rhs);
-	} else {
-		tryOptimizationCase2(stmt, lhsVar, rhs);
 	}
 }
 
@@ -177,11 +172,21 @@ void SimpleCopyPropagationOptimizer::tryOptimizationCase1(
 		return;
 	}
 
+	// Function needs to be a declaration.
+	auto var = cast<Variable>(rhsCall->getCalledExpr());
+	if (!var) {
+		return;
+	}
+	auto fnc = module->getFuncByName(var->getName());
+	if (!fnc) {
+		return;
+	}
+
 	// We will need the set of variables which may be accessed when calling the
 	// function from the right-hand side.
 	ShPtr<ValueData> stmtData(va->getValueData(stmt));
 	const VarSet &varsAccessedInCall(stmtData->getDirAccessedVars());
-	ShPtr<CallInfo> rhsCallInfo(cio->getCallInfo(rhsCall, currFunc));
+	// ShPtr<CallInfo> rhsCallInfo(cio->getCallInfo(rhsCall, currFunc));
 
 	// Get the first statement where the variable is used by going through the
 	// successors of stmt. During this traversal, check that the optimization
@@ -211,18 +216,31 @@ void SimpleCopyPropagationOptimizer::tryOptimizationCase1(
 		}
 
 		// The statement cannot contain a variable which is accessed in the
-		// original call from the right-hand side (both directly and
-		// indirectly).
+		// original call from the right-hand side.
 		for (auto i = firstUseStmtData->dir_all_begin(),
 				e = firstUseStmtData->dir_all_end(); i != e; ++i) {
-			if (hasItem(varsAccessedInCall, *i) ||
-					rhsCallInfo->mayBeRead(*i) ||
-					rhsCallInfo->mayBeModified(*i)) {
+			if (hasItem(varsAccessedInCall, *i)) {
 				return;
 			}
 		}
 
-		// Keep traversing.
+		// If declaration is called (function with no body), the subsequent
+		// checks are not needed.
+		if (fnc->isDeclaration()) {
+			firstUseStmt = firstUseStmt->getSuccessor();
+			continue;
+		}
+
+		// Global variables may be changed in the called function.
+		// If any global is used between the original statement and the
+		// target statement, skip the optimization.
+		for (auto i = firstUseStmtData->dir_all_begin(),
+				e = firstUseStmtData->dir_all_end(); i != e; ++i) {
+			if (hasItem(globalVars, *i)) {
+				return;
+			}
+		}
+
 		firstUseStmt = firstUseStmt->getSuccessor();
 	}
 
@@ -329,61 +347,5 @@ void SimpleCopyPropagationOptimizer::tryOptimizationCase1(
 	}
 }
 
-/**
-* @brief Tries to perform the case (2) optimization from the class description
-*        on the given statement.
-*
-* For the preconditions, see tryOptimization(), which is the place from where
-* this function should be called.
-*/
-void SimpleCopyPropagationOptimizer::tryOptimizationCase2(
-		ShPtr<Statement> stmt, ShPtr<Variable> lhsVar, ShPtr<Expression> rhs) {
-	// TODO Currently, we optimize (2) only if `expr` is a variable. Otherwise,
-	//      in some cases, the result of the optimization is less readable than
-	//      the original code.
-	// TODO When optimizing also non-variable expressions, we have to use
-	//      clone() when replacing the expression. Otherwise, there may be
-	//      several expressions with the same address.
-	if (!isa<Variable>(rhs)) {
-		return;
-	}
-
-	// First, check whether the optimization can be done.
-	StmtSet lhsUses(LhsRhsUsesCFGTraversal::getUses(stmt, currCFG, va, cio));
-	if (lhsUses.empty()) {
-		return;
-	}
-
-	// Check the correspondence between allLhsUses and lhsUses. In a greater
-	// detail, allLhsUses has to contain all the statements in lhsUses + stmt
-	// and possibly a variable-defining statement defining lhsVar without an
-	// initializer.
-	// TODO Can this restriction (empty initializer) be relaxed a bit?
-	ShPtr<VarDefStmt> lhsDefStmt;
-	ShPtr<VarUses> allLhsUses(vuv->getUses(lhsVar, currFunc));
-	for (const auto &dirUse : allLhsUses->dirUses) {
-		if (hasItem(lhsUses, dirUse) || stmt == dirUse) {
-			continue;
-		}
-
-		lhsDefStmt = cast<VarDefStmt>(dirUse);
-		if (!lhsDefStmt || lhsDefStmt->getVar() != lhsVar ||
-				lhsDefStmt->getInitializer()) {
-			return;
-		}
-	}
-
-	// Do the optimization.
-	for (const auto &lhsUse : lhsUses) {
-		replaceVarWithExprInStmt(lhsVar, getRhs(stmt), lhsUse);
-		va->removeFromCache(lhsUse);
-	}
-	removeVarDefOrAssignStatement(stmt);
-	currCFG->removeStmt(stmt);
-	if (lhsDefStmt) {
-		removeVarDefOrAssignStatement(lhsDefStmt, currFunc);
-		currCFG->removeStmt(lhsDefStmt);
-	}
-}
-
 } // namespace llvmir2hll
+} // namespace retdec

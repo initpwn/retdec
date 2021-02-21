@@ -4,21 +4,22 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/analysis/value_analysis.h"
-#include "llvmir2hll/analysis/var_uses_visitor.h"
-#include "llvmir2hll/ir/assign_stmt.h"
-#include "llvmir2hll/ir/constant.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/var_def_stmt.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/optimizer/optimizers/dead_local_assign_optimizer.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/types.h"
-#include "llvmir2hll/utils/ir.h"
-#include "tl-cpputils/container.h"
+#include "retdec/llvmir2hll/analysis/value_analysis.h"
+#include "retdec/llvmir2hll/analysis/var_uses_visitor.h"
+#include "retdec/llvmir2hll/ir/assign_stmt.h"
+#include "retdec/llvmir2hll/ir/constant.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/var_def_stmt.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/dead_local_assign_optimizer.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/types.h"
+#include "retdec/llvmir2hll/utils/ir.h"
+#include "retdec/utils/container.h"
 
-using tl_cpputils::hasItem;
+using retdec::utils::hasItem;
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -36,11 +37,6 @@ DeadLocalAssignOptimizer::DeadLocalAssignOptimizer(ShPtr<Module> module,
 		PRECONDITION_NON_NULL(module);
 		PRECONDITION_NON_NULL(va);
 	}
-
-/**
-* @brief Destructs the optimizer.
-*/
-DeadLocalAssignOptimizer::~DeadLocalAssignOptimizer() {}
 
 void DeadLocalAssignOptimizer::doOptimization() {
 	// Initialization.
@@ -67,6 +63,12 @@ void DeadLocalAssignOptimizer::runOnFunction(ShPtr<Function> func) {
 */
 bool DeadLocalAssignOptimizer::canBeOptimized(ShPtr<Variable> var,
 		ShPtr<VarUses> varUses) {
+
+	// We do not want to optimize external variables (used in a volatile
+	// load/store).
+	if (var->isExternal()) {
+		return false;
+	}
 	// For every direct use of the variable...
 	for (const auto &use : varUses->dirUses) {
 		// The use has to be a variable-defining/assign statement.
@@ -82,12 +84,6 @@ bool DeadLocalAssignOptimizer::canBeOptimized(ShPtr<Variable> var,
 		// The variable is not read in the use.
 		ShPtr<ValueData> useData(va->getValueData(use));
 		if (hasItem(useData->getDirReadVars(), var)) {
-			return false;
-		}
-
-		// We do not want to optimize external variables (used in a volatile
-		// load/store, see #1146).
-		if (var->isExternal()) {
 			return false;
 		}
 
@@ -132,3 +128,4 @@ bool DeadLocalAssignOptimizer::tryToOptimize(ShPtr<Function> func) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

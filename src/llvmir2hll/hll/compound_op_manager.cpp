@@ -4,24 +4,25 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/hll/compound_op_manager.h"
-#include "llvmir2hll/ir/add_op_expr.h"
-#include "llvmir2hll/ir/array_index_op_expr.h"
-#include "llvmir2hll/ir/assign_op_expr.h"
-#include "llvmir2hll/ir/assign_stmt.h"
-#include "llvmir2hll/ir/bit_and_op_expr.h"
-#include "llvmir2hll/ir/bit_or_op_expr.h"
-#include "llvmir2hll/ir/bit_shl_op_expr.h"
-#include "llvmir2hll/ir/bit_shr_op_expr.h"
-#include "llvmir2hll/ir/bit_xor_op_expr.h"
-#include "llvmir2hll/ir/div_op_expr.h"
-#include "llvmir2hll/ir/mod_op_expr.h"
-#include "llvmir2hll/ir/mul_op_expr.h"
-#include "llvmir2hll/ir/struct_index_op_expr.h"
-#include "llvmir2hll/ir/sub_op_expr.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/hll/compound_op_manager.h"
+#include "retdec/llvmir2hll/ir/add_op_expr.h"
+#include "retdec/llvmir2hll/ir/array_index_op_expr.h"
+#include "retdec/llvmir2hll/ir/assign_op_expr.h"
+#include "retdec/llvmir2hll/ir/assign_stmt.h"
+#include "retdec/llvmir2hll/ir/bit_and_op_expr.h"
+#include "retdec/llvmir2hll/ir/bit_or_op_expr.h"
+#include "retdec/llvmir2hll/ir/bit_shl_op_expr.h"
+#include "retdec/llvmir2hll/ir/bit_shr_op_expr.h"
+#include "retdec/llvmir2hll/ir/bit_xor_op_expr.h"
+#include "retdec/llvmir2hll/ir/div_op_expr.h"
+#include "retdec/llvmir2hll/ir/mod_op_expr.h"
+#include "retdec/llvmir2hll/ir/mul_op_expr.h"
+#include "retdec/llvmir2hll/ir/struct_index_op_expr.h"
+#include "retdec/llvmir2hll/ir/sub_op_expr.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/support/debug.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 namespace {
@@ -111,11 +112,6 @@ bool CompoundOpManager::CompoundOp::isBinaryOperator() const {
 */
 CompoundOpManager::CompoundOpManager():
 	compoundOp("?") {}
-
-/**
-* @brief Destructs the compound operator manager.
-*/
-CompoundOpManager::~CompoundOpManager() {}
 
 /**
 * @brief Tries to optimize @a stmt to a compound operator.
@@ -354,3 +350,4 @@ void CompoundOpManager::tryOptimizeWhenLeftOperandEqWithLhsOfAssignStmt(
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

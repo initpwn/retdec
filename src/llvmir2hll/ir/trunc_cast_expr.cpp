@@ -4,10 +4,11 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/trunc_cast_expr.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/trunc_cast_expr.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -17,13 +18,6 @@ namespace llvmir2hll {
 */
 TruncCastExpr::TruncCastExpr(ShPtr<Expression> op, ShPtr<Type> dstType):
 	CastExpr(op, dstType) {}
-
-/**
-* @brief Destructs the operator.
-*/
-TruncCastExpr::~TruncCastExpr() {
-	// Observers are removed in the superclass.
-}
 
 bool TruncCastExpr::isEqualTo(ShPtr<Value> otherValue) const {
 	// Both types and values of all operands have to be equal.
@@ -71,3 +65,4 @@ void TruncCastExpr::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

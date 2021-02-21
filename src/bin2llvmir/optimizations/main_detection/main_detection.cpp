@@ -5,27 +5,28 @@
 */
 
 #include <algorithm>
+#include <cstdint>
 
 #include <llvm/IR/Operator.h>
 
-#include "tl-cpputils/string.h"
-#include "bin2llvmir/optimizations/main_detection/main_detection.h"
-#include "bin2llvmir/providers/asm_instruction.h"
-#include "bin2llvmir/utils/defs.h"
-#include "bin2llvmir/utils/ir_modifier.h"
+#include "retdec/bin2llvmir/optimizations/main_detection/main_detection.h"
+#include "retdec/bin2llvmir/providers/asm_instruction.h"
+#include "retdec/bin2llvmir/utils/debug.h"
 #define debug_enabled false
-#include "llvm-support/utils.h"
+#include "retdec/bin2llvmir/utils/ir_modifier.h"
+#include "retdec/bin2llvmir/utils/llvm.h"
 
-using namespace llvm_support;
-using namespace tl_cpputils;
+using namespace retdec::common;
+using namespace retdec::utils;
 using namespace llvm;
 
+namespace retdec {
 namespace bin2llvmir {
 
 char MainDetection::ID = 0;
 
 static RegisterPass<MainDetection> X(
-		"main-detection",
+		"retdec-main-detection",
 		"Main function identification optimization",
 		false, // Only looks at CFG
 		false // Analysis Pass
@@ -42,51 +43,76 @@ bool MainDetection::runOnModule(llvm::Module& m)
 	_module = &m;
 	_config = ConfigProvider::getConfig(_module);
 	_image = FileImageProvider::getFileImage(_module);
+	_names = NamesProvider::getNames(_module);
 	return run();
 }
 
 bool MainDetection::runOnModuleCustom(
 		llvm::Module& m,
 		Config* c,
-		FileImage* img)
+		FileImage* img,
+		NameContainer* names)
 {
 	_module = &m;
 	_config = c;
 	_image = img;
+	_names = names;
 	return run();
 }
 
 bool MainDetection::run()
 {
-	if (_config == nullptr)
+	if (_config == nullptr || _image == nullptr || _names == nullptr)
 	{
-		LOG << "[ABORT] config file is not available\n";
 		return false;
 	}
-
 	if (skipAnalysis())
 	{
+		removeStaticallyLinked();
 		return false;
 	}
 
 	bool changed = false;
 	Address mainAddr;
 
-	if (mainAddr.isUndefined())
+	if (auto* mf = _module->getFunction("main"))
 	{
-		mainAddr = getFromFunctionNames();
+		if (auto* cf = _config->getConfigFunction(mf))
+		{
+			mainAddr = cf->getStart();
+		}
 	}
 	if (mainAddr.isUndefined())
 	{
 		mainAddr = getFromContext();
 	}
+	if (mainAddr.isUndefined())
+	{
+		mainAddr = getFromFunctionNames();
+	}
 
 	changed = applyResult(mainAddr);
 
-	// Delete statically linked functions bodies only after main detection run.
-	// TODO: This is not ideal here, very random, move main detection to decoding?
-	// and delete linked bodies right after they have been found?
-	for (auto& f : _module->functions())
+	removeStaticallyLinked();
+
+	return changed;
+}
+
+bool MainDetection::skipAnalysis()
+{
+	return _config->getConfig().parameters.getMainAddress().isDefined()
+			|| _config->getConfig().fileType.isShared();
+}
+
+/**
+ * Delete statically linked functions bodies only after main detection run.
+ * TODO: This is not ideal here, very random, move main detection to decoding?
+ * and delete linked bodies right after they have been found?
+ * TODO: do this when shared?
+ */
+void MainDetection::removeStaticallyLinked()
+{
+	for (llvm::Function& f : _module->functions())
 	{
 		auto* cf = _config->getConfigFunction(&f);
 		if (cf && cf->isStaticallyLinked())
@@ -94,29 +120,20 @@ bool MainDetection::run()
 			f.deleteBody();
 		}
 	}
-
-	return changed;
 }
 
-bool MainDetection::skipAnalysis()
-{
-	return _config->getConfig().getMainAddress().isDefined()
-			|| _config->getConfig().fileType.isShared();
-}
-
-tl_cpputils::Address MainDetection::getFromFunctionNames()
+retdec::common::Address MainDetection::getFromFunctionNames()
 {
 	// Order is important: first -> highest priority, last -> lowest  priority.
 	std::vector<std::string> names = {"main", "_main", "wmain", "WinMain"};
-	std::pair<Address, unsigned> ret = {Address(), names.size()};
+	std::pair<Address, std::size_t> ret = {Address(), names.size()};
 
-	for (auto& p : _config->getConfig().functions)
+	for (auto& f : _config->getConfig().functions)
 	{
-		retdec_config::Function& f = p.second;
 		auto it = std::find(names.begin(), names.end(), f.getName());
 		if (it != names.end())
 		{
-			auto index = std::distance(names.begin(), it);
+			std::size_t index = std::distance(names.begin(), it);
 			if (index <= ret.second)
 			{
 				ret = {f.getStart(), index};
@@ -127,7 +144,7 @@ tl_cpputils::Address MainDetection::getFromFunctionNames()
 	return ret.first;
 }
 
-tl_cpputils::Address MainDetection::getFromContext()
+retdec::common::Address MainDetection::getFromContext()
 {
 	Address mainAddr;
 
@@ -136,14 +153,14 @@ tl_cpputils::Address MainDetection::getFromContext()
 	// it should not screw other compilers.
 	//
 	if (_config->getConfig().fileFormat.isIntelHex()
-			&& _config->isMipsOrPic32() && _image)
+			&& _config->getConfig().architecture.isMipsOrPic32() && _image)
 	{
 		auto* epSeg = _image->getImage()->getSegmentFromAddress(
-				_config->getConfig().getEntryPoint());
+				_config->getConfig().parameters.getEntryPoint());
 
 		if (epSeg)
 		{
-			tl_cpputils::Address addr = epSeg->getAddress() + 0x10;
+			retdec::common::Address addr = epSeg->getAddress() + 0x10;
 
 			auto ai = AsmInstruction(_module, addr);
 			auto pai = ai.getPrev();
@@ -275,11 +292,21 @@ tl_cpputils::Address MainDetection::getFromContext()
 				}
 			}
 		}
-		else if (_config->isMipsOrPic32())
+		else if (_config->getConfig().architecture.isMipsOrPic32())
 		{
 			if (tools.isPspGcc() && major == 4 && minor == 3)
 			{
 				if (auto ai = AsmInstruction(_module, 0x8900218))
+				{
+					auto* c = ai.getInstructionFirst<CallInst>();
+					if (c && c->getCalledFunction())
+					{
+						mainAddr = _config->getFunctionAddress(
+								c->getCalledFunction());
+					}
+				}
+				// TODO: delay slots one insn farther
+				if (auto ai = AsmInstruction(_module, 0x890021c))
 				{
 					auto* c = ai.getInstructionFirst<CallInst>();
 					if (c && c->getCalledFunction())
@@ -339,7 +366,7 @@ tl_cpputils::Address MainDetection::getFromContext()
 				}
 			}
 		}
-		else if (_config->getConfig().architecture.isArmOrThumb())
+		else if (_config->getConfig().architecture.isArm32OrThumb())
 		{
 			if (ci.isGcc() && major == 4 && minor == 1)
 			{
@@ -371,10 +398,10 @@ tl_cpputils::Address MainDetection::getFromContext()
 /**
  * TODO: maybe add wrapper handling as in other functions.
  */
-tl_cpputils::Address MainDetection::getFromEntryPointOffset(int offset)
+retdec::common::Address MainDetection::getFromEntryPointOffset(int offset)
 {
 	Address mainAddr;
-	Address ep = _config->getConfig().getEntryPoint();
+	Address ep = _config->getConfig().parameters.getEntryPoint();
 	Address jmpMainAddr = ep + offset;
 	auto ai = AsmInstruction(_module, jmpMainAddr);
 	auto* c = ai.getInstructionFirst<CallInst>();
@@ -389,7 +416,7 @@ tl_cpputils::Address MainDetection::getFromEntryPointOffset(int offset)
  * Try to find main call at _CrtSetCheckCount + 0x2B.
  * Detect if main is called through wrapper.
  */
-tl_cpputils::Address MainDetection::getFromCrtSetCheckCount()
+retdec::common::Address MainDetection::getFromCrtSetCheckCount()
 {
 	Address mainAddr;
 	auto* f = _module->getFunction("_CrtSetCheckCount");
@@ -439,7 +466,7 @@ tl_cpputils::Address MainDetection::getFromCrtSetCheckCount()
  * Try to find main call at InterlockedExchange + 0x46.
  * Detect if main is called through wrapper.
  */
-tl_cpputils::Address MainDetection::getFromInterlockedExchange()
+retdec::common::Address MainDetection::getFromInterlockedExchange()
 {
 	Address mainAddr;
 	auto* f = _module->getFunction("InterlockedExchange");
@@ -485,7 +512,7 @@ tl_cpputils::Address MainDetection::getFromInterlockedExchange()
 	return mainAddr;
 }
 
-bool MainDetection::applyResult(tl_cpputils::Address mainAddr)
+bool MainDetection::applyResult(retdec::common::Address mainAddr)
 {
 	if (mainAddr.isUndefined())
 	{
@@ -495,30 +522,32 @@ bool MainDetection::applyResult(tl_cpputils::Address mainAddr)
 	bool changed = false;
 
 	IrModifier irmodif(_module, _config);
-	_config->getConfig().setMainAddress(mainAddr);
+	_config->getConfig().parameters.setMainAddress(mainAddr);
 	if (auto* f = _config->getLlvmFunction(mainAddr))
 	{
+		auto* cf = _config->getConfigFunction(f);
+		if (cf && cf->isUserDefined())
+		{
+			return false;
+		}
+
 		std::string n = f->getName();
-		if (tl_cpputils::startsWith(n, "function_")
-				|| tl_cpputils::startsWith(n, "sub_"))
+		// TODO: better, we want to know it is main, but we do not want to
+		// rename it if it is from IDA (and maybe never).
+		if (n != "main")
 		{
 			irmodif.renameFunction(f, "main");
+			_names->addNameForAddress(
+					mainAddr,
+					"main",
+					Name::eType::HIGHEST_PRIORITY);
 			changed = true;
 		}
 	}
-	else if (auto ai = AsmInstruction(_module, mainAddr))
-	{
-		LOG << "\t" << "for main"
-				<< " @ " << ai.getAddress() << std::endl;
-
-		irmodif.splitFunctionOn(
-				ai.getLlvmToAsmInstruction(),
-				ai.getAddress(),
-				"main");
-		changed = true;
-	}
+	// AsmInstruction(_module, mainAddr) -> split?
 
 	return changed;
 }
 
 } // namespace bin2llvmir
+} // namespace retdec

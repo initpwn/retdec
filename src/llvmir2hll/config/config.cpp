@@ -4,8 +4,9 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/config/config.h"
+#include "retdec/llvmir2hll/config/config.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -22,6 +23,5 @@ const std::string &ConfigError::getMessage() const noexcept {
 	return message;
 }
 
-Config::~Config() = default;
-
 } // namespace llvmir2hll
+} // namespace retdec

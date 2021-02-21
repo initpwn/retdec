@@ -4,12 +4,13 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/binary_op_expr.h"
-#include "llvmir2hll/ir/int_type.h"
-#include "llvmir2hll/ir/pointer_type.h"
-#include "llvmir2hll/ir/unknown_type.h"
-#include "llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/ir/binary_op_expr.h"
+#include "retdec/llvmir2hll/ir/int_type.h"
+#include "retdec/llvmir2hll/ir/pointer_type.h"
+#include "retdec/llvmir2hll/ir/unknown_type.h"
+#include "retdec/llvmir2hll/support/debug.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -26,11 +27,6 @@ BinaryOpExpr::BinaryOpExpr(ShPtr<Expression> op1, ShPtr<Expression> op2):
 	PRECONDITION_NON_NULL(op1);
 	PRECONDITION_NON_NULL(op2);
 }
-
-/**
-* @brief Destructs the operator.
-*/
-BinaryOpExpr::~BinaryOpExpr() {}
 
 ShPtr<Type> BinaryOpExpr::getType() const {
 	ShPtr<Type> op1Type(op1->getType());
@@ -157,3 +153,4 @@ void BinaryOpExpr::update(ShPtr<Value> subject, ShPtr<Value> arg) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

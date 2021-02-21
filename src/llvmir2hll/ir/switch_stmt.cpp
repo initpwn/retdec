@@ -4,12 +4,13 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/expression.h"
-#include "llvmir2hll/ir/switch_stmt.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/expression.h"
+#include "retdec/llvmir2hll/ir/switch_stmt.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -17,26 +18,21 @@ namespace llvmir2hll {
 *
 * See create() for more information.
 */
-SwitchStmt::SwitchStmt(ShPtr<Expression> controlExpr):
-	switchClauseList(), controlExpr(controlExpr) {}
-
-/**
-* @brief Destructs the statement.
-*/
-SwitchStmt::~SwitchStmt() {}
+SwitchStmt::SwitchStmt(ShPtr<Expression> controlExpr, Address a):
+	Statement(a), switchClauseList(), controlExpr(controlExpr) {}
 
 ShPtr<Value> SwitchStmt::clone() {
 	ShPtr<SwitchStmt> switchStmt(SwitchStmt::create(
-		ucast<Expression>(controlExpr->clone())));
+		ucast<Expression>(controlExpr->clone()), nullptr, getAddress()));
 
 	// Clone all clauses.
 	for (auto i = clause_begin(), e = clause_end(); i != e; ++i) {
 		if (i->first) {
 			switchStmt->addClause(ucast<Expression>(i->first->clone()),
-				ucast<Statement>(i->second->clone()));
+				ucast<Statement>(Statement::cloneStatements(i->second)));
 		} else {
 			// The default clause.
-			switchStmt->addDefaultClause(ucast<Statement>(i->second->clone()));
+			switchStmt->addDefaultClause(ucast<Statement>(Statement::cloneStatements(i->second)));
 		}
 	}
 
@@ -298,15 +294,16 @@ SwitchStmt::clause_iterator SwitchStmt::clause_end() const {
 *
 * @param[in] controlExpr Control expression.
 * @param[in] succ Follower of the statement in the program flow.
+* @param[in] a Address.
 *
 * @par Preconditions
 *  - @a controlExpr is non-null
 */
 ShPtr<SwitchStmt> SwitchStmt::create(ShPtr<Expression> controlExpr,
-		ShPtr<Statement> succ) {
+		ShPtr<Statement> succ, Address a) {
 	PRECONDITION_NON_NULL(controlExpr);
 
-	ShPtr<SwitchStmt> stmt(new SwitchStmt(controlExpr));
+	ShPtr<SwitchStmt> stmt(new SwitchStmt(controlExpr, a));
 	stmt->setSuccessor(succ);
 
 	// Initialization (recall that shared_from_this() cannot be called in a
@@ -373,3 +370,4 @@ void SwitchStmt::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

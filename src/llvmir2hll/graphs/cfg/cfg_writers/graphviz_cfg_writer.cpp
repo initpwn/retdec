@@ -7,22 +7,22 @@
 #include <algorithm>
 #include <queue>
 
-#include "llvmir2hll/graphs/cfg/cfg.h"
-#include "llvmir2hll/graphs/cfg/cfg_writer_factory.h"
-#include "llvmir2hll/graphs/cfg/cfg_writers/graphviz_cfg_writer.h"
-#include "llvmir2hll/ir/expression.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/statement.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/utils/graphviz.h"
-#include "tl-cpputils/container.h"
-#include "tl-cpputils/conversion.h"
-#include "tl-cpputils/string.h"
+#include "retdec/llvmir2hll/graphs/cfg/cfg.h"
+#include "retdec/llvmir2hll/graphs/cfg/cfg_writer_factory.h"
+#include "retdec/llvmir2hll/graphs/cfg/cfg_writers/graphviz_cfg_writer.h"
+#include "retdec/llvmir2hll/ir/expression.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/statement.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/utils/graphviz.h"
+#include "retdec/utils/container.h"
+#include "retdec/utils/conversion.h"
+#include "retdec/utils/string.h"
 
-using tl_cpputils::hasItem;
-using tl_cpputils::replaceCharsWithStrings;
-using tl_cpputils::toString;
+using retdec::utils::hasItem;
+using retdec::utils::replaceCharsWithStrings;
 
+namespace retdec {
 namespace llvmir2hll {
 
 REGISTER_AT_FACTORY("dot", GRAPHVIZ_CFG_WRITER_ID, CFGWriterFactory,
@@ -62,7 +62,9 @@ std::string createLabel(const std::string &str) {
 */
 std::string cfgNodeToGraphvizNode(ShPtr<CFG::Node> cfgNode) {
 	// To ensure uniqueness, we use the node's address.
-	return "Node" + createLabel(toString(cfgNode.get()));
+	return "Node" + createLabel(
+			std::to_string(reinterpret_cast<intptr_t>(cfgNode.get()))
+		);
 }
 
 /**
@@ -200,3 +202,4 @@ void GraphvizCFGWriter::emitStmt(ShPtr<Statement> stmt) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

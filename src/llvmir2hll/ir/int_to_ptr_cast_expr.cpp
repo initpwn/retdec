@@ -4,10 +4,11 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/int_to_ptr_cast_expr.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/int_to_ptr_cast_expr.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -17,13 +18,6 @@ namespace llvmir2hll {
 */
 IntToPtrCastExpr::IntToPtrCastExpr(ShPtr<Expression> op, ShPtr<Type> dstType):
 	CastExpr(op, dstType) {}
-
-/**
-* @brief Destructs the operator.
-*/
-IntToPtrCastExpr::~IntToPtrCastExpr() {
-	// Observers are removed in the superclass.
-}
 
 bool IntToPtrCastExpr::isEqualTo(ShPtr<Value> otherValue) const {
 	// Both types and values of all operands have to be equal.
@@ -72,3 +66,4 @@ void IntToPtrCastExpr::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

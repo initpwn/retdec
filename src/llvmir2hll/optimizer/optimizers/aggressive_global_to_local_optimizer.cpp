@@ -4,14 +4,15 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/module.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/optimizer/optimizers/aggressive_global_to_local_optimizer.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/types.h"
-#include "llvmir2hll/utils/ir.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/module.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/aggressive_global_to_local_optimizer.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/types.h"
+#include "retdec/llvmir2hll/utils/ir.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -26,11 +27,6 @@ AggressiveGlobalToLocalOptimizer::AggressiveGlobalToLocalOptimizer(
 			ShPtr<Module> module): Optimizer(module)  {
 		PRECONDITION_NON_NULL(module);
 	}
-
-/**
-* @brief Destructs the optimizer.
-*/
-AggressiveGlobalToLocalOptimizer::~AggressiveGlobalToLocalOptimizer() {}
 
 void AggressiveGlobalToLocalOptimizer::doOptimization() {
 	convertGlobalVarsToLocalVars();
@@ -67,3 +63,4 @@ void AggressiveGlobalToLocalOptimizer::convertGlobalVarsToLocalVars() {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

@@ -4,20 +4,20 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/hll/hll_writer.h"
-#include "llvmir2hll/hll/hll_writers/c_hll_writer.h"
+#include "retdec/llvmir2hll/hll/hll_writer.h"
+#include "retdec/llvmir2hll/hll/hll_writers/c_hll_writer.h"
 #include "llvmir2hll/hll/hll_writers/hll_writer_tests.h"
-#include "llvmir2hll/ir/int_type.h"
+#include "retdec/llvmir2hll/ir/int_type.h"
 #include "llvmir2hll/ir/tests_with_module.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/support/maybe.h"
-#include "llvmir2hll/support/types.h"
-#include "tl-cpputils/string.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/support/types.h"
+#include "retdec/utils/string.h"
 
 using namespace ::testing;
 
-using tl_cpputils::contains;
+using retdec::utils::contains;
 
+namespace retdec {
 namespace llvmir2hll {
 namespace tests {
 
@@ -36,6 +36,8 @@ void HLLWriterTests::SetUp() {
 	ON_CALL(*configMock, getLineRangeForFunc(_))
 		.WillByDefault(Return(NO_LINE_RANGE));
 	ON_CALL(*configMock, isUserDefinedFunc(_))
+		.WillByDefault(Return(false));
+	ON_CALL(*configMock, isDecompilerDefinedFunc(_))
 		.WillByDefault(Return(false));
 	ON_CALL(*configMock, isStaticallyLinkedFunc(_))
 		.WillByDefault(Return(false));
@@ -63,8 +65,6 @@ void HLLWriterTests::SetUp() {
 		.WillByDefault(Return(StringVector()));
 	ON_CALL(*configMock, getDemangledNameOfClass(_))
 		.WillByDefault(Return(""));
-	ON_CALL(*configMock, getFrontendRelease())
-		.WillByDefault(Return(""));
 	ON_CALL(*configMock, getNumberOfFuncsDetectedInFrontend())
 		.WillByDefault(Return(0));
 	ON_CALL(*configMock, getDetectedCompilerOrPacker())
@@ -73,13 +73,11 @@ void HLLWriterTests::SetUp() {
 		.WillByDefault(Return(""));
 	ON_CALL(*configMock, getSelectedButNotFoundFuncs())
 		.WillByDefault(Return(StringSet()));
-	ON_CALL(*configMock, getFuncsFixedWithLLVMIRFixer())
-		.WillByDefault(Return(StringSet()));
 
 	ON_CALL(*semanticsMock, getCHeaderFileForFunc(_))
-		.WillByDefault(Return(Nothing<std::string>()));
+		.WillByDefault(Return(std::nullopt));
 	ON_CALL(*semanticsMock, getMainFuncName())
-		.WillByDefault(Return(Nothing<std::string>()));
+		.WillByDefault(Return(std::nullopt));
 
 	// By default, use CHLLWriter to test functionality that is shared between
 	// HLL writers.
@@ -217,3 +215,4 @@ EmitsDetectedCryptoPatternsInCommentWhenAvailable) {
 
 } // namespace tests
 } // namespace llvmir2hll
+} // namespace retdec

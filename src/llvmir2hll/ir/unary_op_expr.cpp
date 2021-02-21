@@ -4,9 +4,10 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/unary_op_expr.h"
-#include "llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/ir/unary_op_expr.h"
+#include "retdec/llvmir2hll/support/debug.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -21,11 +22,6 @@ UnaryOpExpr::UnaryOpExpr(ShPtr<Expression> op):
 		op(op) {
 	PRECONDITION_NON_NULL(op);
 }
-
-/**
-* @brief Destructs the operator.
-*/
-UnaryOpExpr::~UnaryOpExpr() {}
 
 ShPtr<Type> UnaryOpExpr::getType() const {
 	return op->getType();
@@ -91,3 +87,4 @@ void UnaryOpExpr::update(ShPtr<Value> subject, ShPtr<Value> arg) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

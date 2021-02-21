@@ -4,21 +4,12 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/graphs/cfg/cfg.h"
-#include "llvmir2hll/graphs/cfg/cfg_builder.h"
-#include "llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/graphs/cfg/cfg.h"
+#include "retdec/llvmir2hll/graphs/cfg/cfg_builder.h"
+#include "retdec/llvmir2hll/support/debug.h"
 
+namespace retdec {
 namespace llvmir2hll {
-
-/**
-* @brief Constructs a new builder.
-*/
-CFGBuilder::CFGBuilder() {}
-
-/**
-* @brief Destructs the builder.
-*/
-CFGBuilder::~CFGBuilder() {}
 
 /**
 * @brief Returns a CFG of the given function @a func.
@@ -43,3 +34,4 @@ void CFGBuilder::initializeNewCFG(ShPtr<Function> func) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

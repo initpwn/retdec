@@ -4,20 +4,21 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/analysis/value_analysis.h"
-#include "llvmir2hll/ir/call_expr.h"
-#include "llvmir2hll/ir/module.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/obtainer/call_info_obtainer.h"
-#include "llvmir2hll/obtainer/calls_in_module_obtainer.h"
-#include "llvmir2hll/pattern/pattern_finder_factory.h"
-#include "llvmir2hll/pattern/pattern_finders/api_call_pattern_finder.h"
-#include "llvmir2hll/pattern/patterns/stmts_pattern.h"
-#include "llvmir2hll/support/debug.h"
-#include "tl-cpputils/container.h"
+#include "retdec/llvmir2hll/analysis/value_analysis.h"
+#include "retdec/llvmir2hll/ir/call_expr.h"
+#include "retdec/llvmir2hll/ir/module.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/obtainer/call_info_obtainer.h"
+#include "retdec/llvmir2hll/obtainer/calls_in_module_obtainer.h"
+#include "retdec/llvmir2hll/pattern/pattern_finder_factory.h"
+#include "retdec/llvmir2hll/pattern/pattern_finders/api_call_pattern_finder.h"
+#include "retdec/llvmir2hll/pattern/patterns/stmts_pattern.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/utils/container.h"
 
-using tl_cpputils::hasItem;
+using retdec::utils::hasItem;
 
+namespace retdec {
 namespace llvmir2hll {
 
 REGISTER_AT_FACTORY("APICall", API_CALL_PATTERN_FINDER_ID,
@@ -33,13 +34,6 @@ namespace {
 StringSet getAPICallFuncNames() {
 	StringSet funcNames;
 
-	// The following list is based on the "List of API sequences being logged
-	// by GVMA64" document from AVG. Additionally, it contains all the A/W
-	// variants.
-
-	funcNames.insert("ShellExecute");
-	funcNames.insert("ShellExecuteA");
-	funcNames.insert("ShellExecuteW");
 	funcNames.insert("CreateFile");
 	funcNames.insert("CreateFileA");
 	funcNames.insert("CreateFileW");
@@ -180,11 +174,6 @@ APICallPatternFinder::APICallPatternFinder(
 		PatternFinder(va, cio) {}
 
 /**
-* @brief Destructs the finder.
-*/
-APICallPatternFinder::~APICallPatternFinder() {}
-
-/**
 * @brief Creates and returns a new instance of APICallPatternFinder.
 *
 * See PatternFinder::PatternFinder() for more information on the parameters and
@@ -212,3 +201,4 @@ PatternFinder::Patterns APICallPatternFinder::findPatterns(
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

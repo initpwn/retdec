@@ -5,9 +5,10 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/semantics/semantics/impl_support/get_symbolic_names_for_param.h"
-#include "llvmir2hll/semantics/semantics/libc_semantics/get_symbolic_names_for_param.h"
+#include "retdec/llvmir2hll/semantics/semantics/impl_support/get_symbolic_names_for_param.h"
+#include "retdec/llvmir2hll/semantics/semantics/libc_semantics/get_symbolic_names_for_param.h"
 
+namespace retdec {
 namespace llvmir2hll {
 namespace semantics {
 namespace libc {
@@ -55,7 +56,7 @@ const FuncParamsMap &FUNC_PARAMS_MAP(initFuncParamsMap());
 *
 * See its description for more details.
 */
-Maybe<IntStringMap> getSymbolicNamesForParam(const std::string &funcName,
+std::optional<IntStringMap> getSymbolicNamesForParam(const std::string &funcName,
 		unsigned paramPos) {
 	return getSymbolicNamesForParamFromMap(funcName, paramPos, FUNC_PARAMS_MAP);
 }
@@ -63,3 +64,4 @@ Maybe<IntStringMap> getSymbolicNamesForParam(const std::string &funcName,
 } // namespace libc
 } // namespace semantics
 } // namespace llvmir2hll
+} // namespace retdec

@@ -6,28 +6,29 @@
 
 #include <gtest/gtest.h>
 
-#include "llvmir2hll/hll/hll_writers/c_hll_writer.h"
+#include "retdec/llvmir2hll/hll/hll_writers/c_hll_writer.h"
 #include "llvmir2hll/hll/hll_writers/hll_writer_tests.h"
-#include "llvmir2hll/ir/add_op_expr.h"
-#include "llvmir2hll/ir/assign_op_expr.h"
-#include "llvmir2hll/ir/call_expr.h"
-#include "llvmir2hll/ir/call_stmt.h"
-#include "llvmir2hll/ir/const_float.h"
-#include "llvmir2hll/ir/const_int.h"
-#include "llvmir2hll/ir/const_string.h"
-#include "llvmir2hll/ir/empty_stmt.h"
-#include "llvmir2hll/ir/float_type.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/int_type.h"
-#include "llvmir2hll/ir/lt_op_expr.h"
-#include "llvmir2hll/ir/ufor_loop_stmt.h"
-#include "llvmir2hll/ir/variable.h"
-#include "tl-cpputils/string.h"
+#include "retdec/llvmir2hll/ir/add_op_expr.h"
+#include "retdec/llvmir2hll/ir/assign_op_expr.h"
+#include "retdec/llvmir2hll/ir/call_expr.h"
+#include "retdec/llvmir2hll/ir/call_stmt.h"
+#include "retdec/llvmir2hll/ir/const_float.h"
+#include "retdec/llvmir2hll/ir/const_int.h"
+#include "retdec/llvmir2hll/ir/const_string.h"
+#include "retdec/llvmir2hll/ir/empty_stmt.h"
+#include "retdec/llvmir2hll/ir/float_type.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/int_type.h"
+#include "retdec/llvmir2hll/ir/lt_op_expr.h"
+#include "retdec/llvmir2hll/ir/ufor_loop_stmt.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/utils/string.h"
 
 using namespace ::testing;
 
-using tl_cpputils::contains;
+using retdec::utils::contains;
 
+namespace retdec {
 namespace llvmir2hll {
 namespace tests {
 
@@ -63,7 +64,7 @@ FloatLiteralIsEmittedWithCorrectSuffix) {
 	//
 	module->addGlobalVar(
 		Variable::create("g", FloatType::create(32)),
-		ConstFloat::create(llvm::APFloat(llvm::APFloat::IEEEsingle, "0.0"))
+		ConstFloat::create(llvm::APFloat(llvm::APFloat::IEEEsingle(), "0.0"))
 	);
 
 	auto code = emitCodeForCurrentModule();
@@ -78,7 +79,7 @@ DoubleLiteralIsEmittedWithoutSuffix) {
 	//
 	module->addGlobalVar(
 		Variable::create("g", FloatType::create(64)),
-		ConstFloat::create(llvm::APFloat(llvm::APFloat::IEEEdouble, "0.0"))
+		ConstFloat::create(llvm::APFloat(llvm::APFloat::IEEEdouble(), "0.0"))
 	);
 
 	auto code = emitCodeForCurrentModule();
@@ -93,7 +94,7 @@ LongDoubleLiteralIsEmittedWithCorrectSuffix) {
 	//
 	module->addGlobalVar(
 		Variable::create("g", FloatType::create(80)),
-		ConstFloat::create(llvm::APFloat(llvm::APFloat::x87DoubleExtended, "0.0"))
+		ConstFloat::create(llvm::APFloat(llvm::APFloat::x87DoubleExtended(), "0.0"))
 	);
 
 	auto code = emitCodeForCurrentModule();
@@ -230,3 +231,4 @@ EmitsVarDefOfInitOfUForLoopStmtWhenLoopHasItsInitMarked) {
 
 } // namespace tests
 } // namespace llvmir2hll
+} // namespace retdec

@@ -6,34 +6,35 @@
 
 #include <gtest/gtest.h>
 
-#include "llvmir2hll/ir/add_op_expr.h"
-#include "llvmir2hll/ir/address_op_expr.h"
-#include "llvmir2hll/ir/assign_stmt.h"
-#include "llvmir2hll/ir/bit_cast_expr.h"
-#include "llvmir2hll/ir/call_expr.h"
-#include "llvmir2hll/ir/call_stmt.h"
-#include "llvmir2hll/ir/const_int.h"
-#include "llvmir2hll/ir/deref_op_expr.h"
-#include "llvmir2hll/ir/empty_stmt.h"
-#include "llvmir2hll/ir/for_loop_stmt.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/function_builder.h"
-#include "llvmir2hll/ir/int_type.h"
-#include "llvmir2hll/ir/lt_op_expr.h"
-#include "llvmir2hll/ir/pointer_type.h"
-#include "llvmir2hll/ir/return_stmt.h"
+#include "retdec/llvmir2hll/ir/add_op_expr.h"
+#include "retdec/llvmir2hll/ir/address_op_expr.h"
+#include "retdec/llvmir2hll/ir/assign_stmt.h"
+#include "retdec/llvmir2hll/ir/bit_cast_expr.h"
+#include "retdec/llvmir2hll/ir/call_expr.h"
+#include "retdec/llvmir2hll/ir/call_stmt.h"
+#include "retdec/llvmir2hll/ir/const_int.h"
+#include "retdec/llvmir2hll/ir/deref_op_expr.h"
+#include "retdec/llvmir2hll/ir/empty_stmt.h"
+#include "retdec/llvmir2hll/ir/for_loop_stmt.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/function_builder.h"
+#include "retdec/llvmir2hll/ir/int_type.h"
+#include "retdec/llvmir2hll/ir/lt_op_expr.h"
+#include "retdec/llvmir2hll/ir/pointer_type.h"
+#include "retdec/llvmir2hll/ir/return_stmt.h"
 #include "llvmir2hll/ir/tests_with_module.h"
-#include "llvmir2hll/ir/var_def_stmt.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/ir/void_type.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/utils/ir.h"
+#include "retdec/llvmir2hll/ir/var_def_stmt.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/ir/void_type.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/utils/ir.h"
 #include "llvmir2hll/var_renamer/tests_with_var_name_gen_and_var_renamer.h"
-#include "llvmir2hll/var_renamer/var_renamers/readable_var_renamer.h"
+#include "retdec/llvmir2hll/var_renamer/var_renamers/readable_var_renamer.h"
 
 using namespace ::testing;
 using namespace std::string_literals;
 
+namespace retdec {
 namespace llvmir2hll {
 namespace tests {
 
@@ -102,7 +103,6 @@ DoNotRenameFunctionsInCalls) {
 	//
 	EXPECT_EQ("test", cast<Variable>(testCallExpr->getCalledExpr())->getName());
 }
-
 
 TEST_F(ReadableVarRenamerTests,
 GlobalVariablesGetCorrectlyRenamed) {
@@ -568,7 +568,7 @@ void ReadableVarRenamerTests::scenarioVarStoringTheResultOfKnownFuncIsRenamedCor
 	// Setup the renamer.
 	INSTANTIATE_VAR_NAME_GEN_AND_VAR_RENAMER(ReadableVarRenamer, true);
 	ON_CALL(*semanticsMock, getNameOfVarStoringResult(func->getName()))
-		.WillByDefault(Return(Just(std::string(refVarName))));
+		.WillByDefault(Return(std::string(refVarName)));
 
 	// Do the renaming.
 	varRenamer->renameVars(module);
@@ -746,9 +746,9 @@ VariablesPassedAsArgumentsToWellKnownFunctionAreGivenSpecialNames) {
 	// Setup the renamer.
 	INSTANTIATE_VAR_NAME_GEN_AND_VAR_RENAMER(ReadableVarRenamer, true);
 	ON_CALL(*semanticsMock, getNameOfParam("fopen", 1))
-		.WillByDefault(Return(Just("file_path"s)));
+		.WillByDefault(Return("file_path"s));
 	ON_CALL(*semanticsMock, getNameOfParam("fopen", 2))
-		.WillByDefault(Return(Just("mode"s)));
+		.WillByDefault(Return("mode"s));
 
 	// Do the renaming.
 	varRenamer->renameVars(module);
@@ -793,7 +793,7 @@ DereferenceAndAddressAndCastsAreIgnoredWhenNamingArgumentsOfWellKnownFunctions) 
 	// Setup the renamer.
 	INSTANTIATE_VAR_NAME_GEN_AND_VAR_RENAMER(ReadableVarRenamer, true);
 	ON_CALL(*semanticsMock, getNameOfParam("isdigit", 1))
-		.WillByDefault(Return(Just("c"s)));
+		.WillByDefault(Return("c"s));
 
 	// Do the renaming.
 	varRenamer->renameVars(module);
@@ -833,9 +833,9 @@ VariablePassedAsArgumentToWellKnownFunctionIsNotRenamedWhenItIsFunction) {
 	// Setup the renamer.
 	INSTANTIATE_VAR_NAME_GEN_AND_VAR_RENAMER(ReadableVarRenamer, true);
 	ON_CALL(*semanticsMock, getNameOfParam("fopen", 1))
-		.WillByDefault(Return(Nothing<std::string>()));
+		.WillByDefault(Return(std::nullopt));
 	ON_CALL(*semanticsMock, getNameOfParam("fopen", 2))
-		.WillByDefault(Return(Just("mode"s)));
+		.WillByDefault(Return("mode"s));
 
 	// Do the renaming.
 	varRenamer->renameVars(module);
@@ -876,7 +876,7 @@ GlobalVarPassedAsArgOfWellKnownFunctionIsNotGivenSpecialName) {
 	// Setup the renamer.
 	INSTANTIATE_VAR_NAME_GEN_AND_VAR_RENAMER(ReadableVarRenamer, true);
 	ON_CALL(*semanticsMock, getNameOfParam(putcharFunc->getName(), 1))
-		.WillByDefault(Return(Just("c"s)));
+		.WillByDefault(Return("c"s));
 
 	// Do the renaming.
 	varRenamer->renameVars(module);
@@ -914,7 +914,7 @@ VarPassedAsArgOfNotWellKnownFunctionIsNotGivenSpecialName) {
 	// Setup the renamer.
 	INSTANTIATE_VAR_NAME_GEN_AND_VAR_RENAMER(ReadableVarRenamer, true);
 	ON_CALL(*semanticsMock, getNameOfParam("unusual", 1))
-		.WillByDefault(Return(Nothing<std::string>()));
+		.WillByDefault(Return(std::nullopt));
 
 	// Do the renaming.
 	varRenamer->renameVars(module);
@@ -1008,9 +1008,9 @@ VarStoringTheResultOfKnownFuncIsRenamedBeforeVarPassedAsArgument) {
 	std::string expectedVarXNameAfterRename("c");
 	INSTANTIATE_VAR_NAME_GEN_AND_VAR_RENAMER(ReadableVarRenamer, true);
 	ON_CALL(*semanticsMock, getNameOfVarStoringResult(getcharFunc->getName()))
-		.WillByDefault(Return(Just(expectedVarXNameAfterRename)));
+		.WillByDefault(Return(expectedVarXNameAfterRename));
 	ON_CALL(*semanticsMock, getNameOfParam(putcharFunc->getName(), 1))
-		.WillByDefault(Return(Just("d"s)));
+		.WillByDefault(Return("d"s));
 
 	// Do the renaming.
 	varRenamer->renameVars(module);
@@ -1022,3 +1022,4 @@ VarStoringTheResultOfKnownFuncIsRenamedBeforeVarPassedAsArgument) {
 
 } // namespace tests
 } // namespace llvmir2hll
+} // namespace retdec

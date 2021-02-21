@@ -4,11 +4,12 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/int_type.h"
-#include "llvmir2hll/ir/not_op_expr.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/int_type.h"
+#include "retdec/llvmir2hll/ir/not_op_expr.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -18,13 +19,6 @@ namespace llvmir2hll {
 */
 NotOpExpr::NotOpExpr(ShPtr<Expression> op):
 	UnaryOpExpr(op) {}
-
-/**
-* @brief Destructs the operator.
-*/
-NotOpExpr::~NotOpExpr() {
-	// Observers are removed in the superclass.
-}
 
 bool NotOpExpr::isEqualTo(ShPtr<Value> otherValue) const {
 	if (ShPtr<NotOpExpr> otherValueNotOpExpr = cast<NotOpExpr>(otherValue)) {
@@ -69,3 +63,4 @@ void NotOpExpr::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

@@ -4,10 +4,11 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/void_type.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/void_type.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -17,11 +18,6 @@ namespace llvmir2hll {
 */
 VoidType::VoidType():
 	Type() {}
-
-/**
-* @brief Destructs the type.
-*/
-VoidType::~VoidType() {}
 
 ShPtr<Value> VoidType::clone() {
 	return VoidType::create();
@@ -53,3 +49,4 @@ void VoidType::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

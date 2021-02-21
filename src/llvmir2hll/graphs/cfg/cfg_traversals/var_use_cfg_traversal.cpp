@@ -4,11 +4,12 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/analysis/value_analysis.h"
-#include "llvmir2hll/graphs/cfg/cfg_traversals/var_use_cfg_traversal.h"
-#include "llvmir2hll/ir/statement.h"
-#include "llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/analysis/value_analysis.h"
+#include "retdec/llvmir2hll/graphs/cfg/cfg_traversals/var_use_cfg_traversal.h"
+#include "retdec/llvmir2hll/ir/statement.h"
+#include "retdec/llvmir2hll/support/debug.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -20,11 +21,6 @@ namespace llvmir2hll {
 VarUseCFGTraversal::VarUseCFGTraversal(ShPtr<Variable> var,
 		ShPtr<CFG> cfg, ShPtr<ValueAnalysis> va):
 	CFGTraversal(cfg, true), var(var), va(va) {}
-
-/**
-* @brief Destructs the traverser.
-*/
-VarUseCFGTraversal::~VarUseCFGTraversal() {}
 
 /**
 * @brief Returns @c true if the given variable @a var is defined/modified prior
@@ -95,3 +91,4 @@ bool VarUseCFGTraversal::combineRetVals(bool origRetVal, bool newRetVal) const {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

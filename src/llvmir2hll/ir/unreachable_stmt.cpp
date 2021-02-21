@@ -4,24 +4,20 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/unreachable_stmt.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/unreachable_stmt.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
 * @brief Constructs a new unreachable statement.
 */
-UnreachableStmt::UnreachableStmt() {}
-
-/**
-* @brief Destructs the statement.
-*/
-UnreachableStmt::~UnreachableStmt() {}
+UnreachableStmt::UnreachableStmt(Address a): Statement(a) {}
 
 ShPtr<Value> UnreachableStmt::clone() {
-	ShPtr<UnreachableStmt> unreachableStmt(UnreachableStmt::create());
+	ShPtr<UnreachableStmt> unreachableStmt(UnreachableStmt::create(getAddress()));
 	unreachableStmt->setMetadata(getMetadata());
 	return unreachableStmt;
 }
@@ -43,8 +39,9 @@ void UnreachableStmt::accept(Visitor *v) {
 	v->visit(ucast<UnreachableStmt>(shared_from_this()));
 }
 
-ShPtr<UnreachableStmt> UnreachableStmt::create() {
-	return ShPtr<UnreachableStmt>(new UnreachableStmt());
+ShPtr<UnreachableStmt> UnreachableStmt::create(Address a) {
+	return ShPtr<UnreachableStmt>(new UnreachableStmt(a));
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

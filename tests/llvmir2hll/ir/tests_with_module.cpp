@@ -5,17 +5,19 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/call_expr.h"
-#include "llvmir2hll/ir/call_stmt.h"
-#include "llvmir2hll/ir/empty_stmt.h"
-#include "llvmir2hll/ir/expression.h"
-#include "llvmir2hll/ir/function_builder.h"
+#include "retdec/llvmir2hll/ir/call_expr.h"
+#include "retdec/llvmir2hll/ir/call_stmt.h"
+#include "retdec/llvmir2hll/ir/empty_stmt.h"
+#include "retdec/llvmir2hll/ir/expression.h"
+#include "retdec/llvmir2hll/ir/function_builder.h"
 #include "llvmir2hll/ir/tests_with_module.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/ir/void_type.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/ir/void_type.h"
+#include "retdec/llvmir2hll/support/debug.h"
 
 using namespace ::testing;
 
+namespace retdec {
 namespace llvmir2hll {
 namespace tests {
 
@@ -41,7 +43,7 @@ TestsWithModule::TestsWithModule():
 * @return The constructed function declaration.
 */
 ShPtr<Function> TestsWithModule::addFuncDecl(const std::string &funcName) {
-	ShPtr<Function> func(Function::create(VoidType::create(), funcName,
+	ShPtr<Function> func(Function::create(nullptr, VoidType::create(), funcName,
 		VarVector(), VarSet(), ShPtr<Statement>(), false));
 	module->addFunc(func);
 	return func;
@@ -53,7 +55,7 @@ ShPtr<Function> TestsWithModule::addFuncDecl(const std::string &funcName) {
 * @return The constructed function definition.
 */
 ShPtr<Function> TestsWithModule::addFuncDef(const std::string &funcName) {
-	ShPtr<Function> func(Function::create(VoidType::create(), funcName,
+	ShPtr<Function> func(Function::create(nullptr, VoidType::create(), funcName,
 		VarVector(), VarSet(), EmptyStmt::create(), false));
 	module->addFunc(func);
 	return func;
@@ -90,3 +92,4 @@ ShPtr<CallStmt> TestsWithModule::addCall(const std::string &callerName,
 
 } // namespace tests
 } // namespace llvmir2hll
+} // namespace retdec

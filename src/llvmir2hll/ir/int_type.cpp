@@ -4,10 +4,11 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/int_type.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/int_type.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -17,11 +18,6 @@ namespace llvmir2hll {
 */
 IntType::IntType(unsigned size, bool isSigned):
 	Type(), size(size), signedInt(isSigned) {}
-
-/**
-* @brief Destructs the type.
-*/
-IntType::~IntType() {}
 
 ShPtr<Value> IntType::clone() {
 	return IntType::create(size);
@@ -114,3 +110,4 @@ std::map<unsigned, ShPtr<IntType>> IntType::createdSignedTypes;
 std::map<unsigned, ShPtr<IntType>> IntType::createdUnsignedTypes;
 
 } // namespace llvmir2hll
+} // namespace retdec

@@ -4,60 +4,61 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/analysis/value_analysis.h"
-#include "llvmir2hll/graphs/cg/cg_builder.h"
-#include "llvmir2hll/hll/hll_writer.h"
-#include "llvmir2hll/obtainer/call_info_obtainer.h"
-#include "llvmir2hll/optimizer/optimizer_manager.h"
-#include "llvmir2hll/optimizer/optimizers/aggressive_deref_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/aggressive_global_to_local_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/auxiliary_variables_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/bit_op_to_log_op_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/bit_shift_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/break_continue_return_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/c_array_arg_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/c_cast_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/copy_propagation_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/dead_code_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/dead_global_assign_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/dead_local_assign_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/deref_address_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/deref_to_array_index_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/empty_array_to_string_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/empty_stmt_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/global_to_local_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/if_before_loop_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/if_structure_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/if_to_switch_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/llvm_intrinsics_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/loop_last_continue_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/no_init_var_def_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/pre_while_true_loop_conv_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/remove_all_casts_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/remove_useless_casts_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/self_assign_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/simple_copy_propagation_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/simplify_arithm_expr_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/unreachable_code_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/unused_global_var_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/var_def_for_loop_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/var_def_stmt_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/void_return_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/while_true_to_for_loop_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/while_true_to_ufor_loop_optimizer.h"
-#include "llvmir2hll/optimizer/optimizers/while_true_to_while_cond_optimizer.h"
-#include "llvmir2hll/support/debug.h"
-#include "tl-cpputils/container.h"
-#include "tl-cpputils/string.h"
-#include "tl-cpputils/system.h"
+#include <chrono>
+#include <thread>
 
-using namespace llvm_support;
+#include "retdec/llvmir2hll/analysis/value_analysis.h"
+#include "retdec/llvmir2hll/graphs/cg/cg_builder.h"
+#include "retdec/llvmir2hll/hll/hll_writer.h"
+#include "retdec/llvmir2hll/obtainer/call_info_obtainer.h"
+#include "retdec/llvmir2hll/optimizer/optimizer_manager.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/aggressive_deref_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/aggressive_global_to_local_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/bit_op_to_log_op_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/bit_shift_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/break_continue_return_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/c_array_arg_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/c_cast_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/copy_propagation_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/dead_code_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/dead_local_assign_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/deref_address_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/deref_to_array_index_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/empty_array_to_string_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/empty_stmt_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/goto_stmt_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/if_before_loop_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/if_structure_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/if_to_switch_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/llvm_intrinsics_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/loop_last_continue_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/no_init_var_def_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/pre_while_true_loop_conv_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/remove_all_casts_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/remove_useless_casts_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/self_assign_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/simple_copy_propagation_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/simplify_arithm_expr_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/unused_global_var_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/var_def_for_loop_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/var_def_stmt_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/void_return_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/while_true_to_for_loop_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/while_true_to_ufor_loop_optimizer.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/while_true_to_while_cond_optimizer.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/utils/container.h"
+#include "retdec/utils/string.h"
+#include "retdec/utils/system.h"
+#include "retdec/utils/io/log.h"
+
+using namespace retdec::utils::io;
 using namespace std::string_literals;
 
-using tl_cpputils::hasItem;
-using tl_cpputils::sleep;
-using tl_cpputils::startsWith;
+using retdec::utils::hasItem;
+using retdec::utils::startsWith;
 
+namespace retdec {
 namespace llvmir2hll {
 namespace {
 
@@ -88,35 +89,6 @@ StringSet trimOptimizerSuffix(const StringSet &opts) {
 }
 
 } // anonymous namespace
-
-/**
-* @brief Has an equivalent of back-end @c Optimization run in the front-end?
-*/
-template<typename Optimization>
-bool OptimizerManager::hasRunInFrontend() {
-	// By default, return false. True can be returned only from
-	// specializations.
-	return false;
-}
-
-// Note: The template specializations have to appear here, before the
-//       implementation of optimize(). Otherwise, we get an "explicit
-//       specialization after instantiation" error.
-
-template<>
-bool OptimizerManager::hasRunInFrontend<GlobalToLocalOptimizer>() {
-	return hasItem(frontendRunOpts, "global-to-local");
-}
-
-template<>
-bool OptimizerManager::hasRunInFrontend<DeadGlobalAssignOptimizer>() {
-	return hasItem(frontendRunOpts, "dead-global-assign");
-}
-
-template<>
-bool OptimizerManager::hasRunInFrontend<UnreachableCodeOptimizer>() {
-	return hasItem(frontendRunOpts, "never-returning-funcs");
-}
 
 /**
 * @brief Constructs a new optimizer manager.
@@ -160,17 +132,12 @@ OptimizerManager::OptimizerManager(const StringSet &enabledOpts,
 		hllWriter(hllWriter), va(va), cio(cio),
 		arithmExprEvaluator(arithmExprEvaluator),
 		enableAggressiveOpts(enableAggressiveOpts), enableDebug(enableDebug),
-		recoverFromOutOfMemory(true), frontendRunOpts(), backendRunOpts() {
+		recoverFromOutOfMemory(true), backendRunOpts() {
 			PRECONDITION_NON_NULL(hllWriter);
 			PRECONDITION_NON_NULL(va);
 			PRECONDITION_NON_NULL(cio);
 			PRECONDITION_NON_NULL(arithmExprEvaluator);
 		}
-
-/**
-* @brief Destructs the manager.
-*/
-OptimizerManager::~OptimizerManager() {}
 
 /**
 * @brief Runs the optimizations over @a m.
@@ -183,19 +150,6 @@ void OptimizerManager::optimize(ShPtr<Module> m) {
 	// Of course, if some optimization depend on another one, the order is
 	// clear.
 
-	// We don't have to run some optimizations that already run in the
-	// front-end, such as optimizations of global variables. To this end, we
-	// need to know which optimization run in the front-end.
-	frontendRunOpts = m->getOptsRunInFrontend();
-
-	//
-	// Perform initial, HLL-dependent optimizations.
-	//
-	if (hllWriter->getId() == "py") {
-		// Optimizations for Python'.
-		run<RemoveAllCastsOptimizer>(m);
-	}
-
 	//
 	// Perform HLL-independent optimizations.
 	//
@@ -205,6 +159,7 @@ void OptimizerManager::optimize(ShPtr<Module> m) {
 		run<EmptyStmtOptimizer>(m);
 	}
 
+	run<GotoStmtOptimizer>(m);
 	run<RemoveUselessCastsOptimizer>(m);
 
 	// The first part of removal of non-compound statements. The other part
@@ -214,18 +169,12 @@ void OptimizerManager::optimize(ShPtr<Module> m) {
 	run<AggressiveGlobalToLocalOptimizer>(m);
 
 	// Data-flow optimizations.
-	// GlobalToLocalOptimizer should be run before CopyPropagationOptimizer.
-	runUnlessRunInFrontend<GlobalToLocalOptimizer>(m, va, cio);
 	// The following optimizations should be run before CopyPropagation to
 	// speed it up.
-	runUnlessRunInFrontend<DeadGlobalAssignOptimizer>(m, va, cio);
 	run<UnusedGlobalVarOptimizer>(m);
 	run<DeadLocalAssignOptimizer>(m, va);
 	run<SimpleCopyPropagationOptimizer>(m, va, cio);
 	run<CopyPropagationOptimizer>(m, va, cio);
-	// AuxiliaryVariablesOptimizer should be run after GlobalToLocalOptimizer
-	// and CopyPropagationOptimizer.
-	run<AuxiliaryVariablesOptimizer>(m, va, cio);
 
 	// SimplifyArithmExprOptimizer should be run before loop optimizations.
 	run<SimplifyArithmExprOptimizer>(m, arithmExprEvaluator);
@@ -244,8 +193,8 @@ void OptimizerManager::optimize(ShPtr<Module> m) {
 	// WhileTrueToForLoopOptimizer should be run before
 	// WhileTrueToWhileCondOptimizer.
 	run<WhileTrueToForLoopOptimizer>(m, va, arithmExprEvaluator);
-	// TODO The WhileTrueToUForLoopOptimizer does nothing at the moment (see
-	//      commit a5f4988 and #1358), so it makes no sense to run it.
+	// TODO The WhileTrueToUForLoopOptimizer does nothing at the moment, so it
+	//      makes no sense to run it.
 	#if 0
 	// WhileTrueToUForLoopOptimizer should be run after
 	// WhileTrueToForLoopOptimizer (WhileTrueToForLoopOptimizer may produce
@@ -257,9 +206,6 @@ void OptimizerManager::optimize(ShPtr<Module> m) {
 	#endif
 	run<WhileTrueToWhileCondOptimizer>(m);
 	run<IfBeforeLoopOptimizer>(m, va);
-	// Unreachable code should be removed after all structural optimizations to
-	// make sure that none of them appends something to unreachable statements.
-	runUnlessRunInFrontend<UnreachableCodeOptimizer>(m, va);
 
 	// The second part of removal of non-compound statements.
 	run<LLVMIntrinsicsOptimizer>(m);
@@ -278,11 +224,6 @@ void OptimizerManager::optimize(ShPtr<Module> m) {
 	// output. However, do this only if an optimization different than
 	// CopyPropagation was run; otherwise, it makes no sense to run it again.
 	if (shouldSecondCopyPropagationBeRun()) {
-		// GlobalToLocalOptimizer should be run before CopyPropagationOptimizer.
-		runUnlessRunInFrontend<GlobalToLocalOptimizer>(m, va, cio);
-		// Dead{Global,Local}AssignOptimizer should be run before
-		// CopyPropagationOptimizer to speed it up.
-		runUnlessRunInFrontend<DeadGlobalAssignOptimizer>(m, va, cio);
 		run<UnusedGlobalVarOptimizer>(m);
 		run<DeadLocalAssignOptimizer>(m, va);
 		run<SimpleCopyPropagationOptimizer>(m, va, cio);
@@ -303,6 +244,9 @@ void OptimizerManager::optimize(ShPtr<Module> m) {
 	run<VarDefForLoopOptimizer>(m);
 	run<VarDefStmtOptimizer>(m, va);
 
+	run<EmptyStmtOptimizer>(m);
+	run<GotoStmtOptimizer>(m);
+
 	// SimplifyArithmExprOptimizer should be run at the end to produce the most
 	// readable output.
 	run<SimplifyArithmExprOptimizer>(m, arithmExprEvaluator);
@@ -318,14 +262,8 @@ void OptimizerManager::optimize(ShPtr<Module> m) {
 	//
 	// Perform final, HLL-dependent optimizations.
 	//
-	if (hllWriter->getId() == "c") {
-		// Optimizations for C.
-		run<CCastOptimizer>(m);
-		run<CArrayArgOptimizer>(m);
-	} else if (hllWriter->getId() == "py") {
-		// Optimizations for Python'.
-		run<NoInitVarDefOptimizer>(m);
-	}
+	run<CCastOptimizer>(m);
+	run<CArrayArgOptimizer>(m);
 }
 
 /**
@@ -372,8 +310,8 @@ void OptimizerManager::runOptimizerProvidedItShouldBeRun(ShPtr<Optimizer> optimi
 		try {
 			optimizer->optimize();
 		} catch (const std::bad_alloc &) {
-			printWarningMessage("out of memory; trying to recover");
-			sleep(1);
+			Log::error() << Log::Warning << "out of memory; trying to recover" << std::endl;
+			std::this_thread::sleep_for(std::chrono::seconds(1));
 		}
 	} else {
 		// Just run the optimizer and let std::bad_alloc propagate.
@@ -391,7 +329,7 @@ void OptimizerManager::runOptimizerProvidedItShouldBeRun(ShPtr<Optimizer> optimi
 */
 void OptimizerManager::printOptimization(const std::string &optId) const {
 	if (enableDebug) {
-		printSubPhase("running "s + optId + OPT_SUFFIX);
+		Log::phase("running "s + optId + OPT_SUFFIX, Log::SubPhase);
 	}
 }
 
@@ -439,18 +377,5 @@ void OptimizerManager::run(ShPtr<Module> m, Args &&... args) {
 	runOptimizerProvidedItShouldBeRun(optimizer);
 }
 
-/**
-* @brief Runs the given optimization provided that it has not run in the
-*        front-end.
-*
-* See @c run() for more details.
-*/
-template<typename Optimization, typename... Args>
-void OptimizerManager::runUnlessRunInFrontend(ShPtr<Module> m,
-		Args &&... args) {
-	if (!hasRunInFrontend<Optimization>()) {
-		run<Optimization>(m, std::forward<Args>(args)...);
-	}
-}
-
 } // namespace llvmir2hll
+} // namespace retdec

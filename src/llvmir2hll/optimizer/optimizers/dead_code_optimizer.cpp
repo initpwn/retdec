@@ -4,20 +4,23 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/analysis/goto_target_analysis.h"
-#include "llvmir2hll/evaluator/arithm_expr_evaluator.h"
-#include "llvmir2hll/ir/break_stmt.h"
-#include "llvmir2hll/ir/const_float.h"
-#include "llvmir2hll/ir/const_int.h"
-#include "llvmir2hll/ir/continue_stmt.h"
-#include "llvmir2hll/ir/for_loop_stmt.h"
-#include "llvmir2hll/ir/return_stmt.h"
-#include "llvmir2hll/ir/switch_stmt.h"
-#include "llvmir2hll/ir/value.h"
-#include "llvmir2hll/ir/while_loop_stmt.h"
-#include "llvmir2hll/optimizer/optimizers/dead_code_optimizer.h"
-#include "llvmir2hll/support/debug.h"
+#include <optional>
 
+#include "retdec/llvmir2hll/analysis/goto_target_analysis.h"
+#include "retdec/llvmir2hll/evaluator/arithm_expr_evaluator.h"
+#include "retdec/llvmir2hll/ir/break_stmt.h"
+#include "retdec/llvmir2hll/ir/const_float.h"
+#include "retdec/llvmir2hll/ir/const_int.h"
+#include "retdec/llvmir2hll/ir/continue_stmt.h"
+#include "retdec/llvmir2hll/ir/for_loop_stmt.h"
+#include "retdec/llvmir2hll/ir/return_stmt.h"
+#include "retdec/llvmir2hll/ir/switch_stmt.h"
+#include "retdec/llvmir2hll/ir/value.h"
+#include "retdec/llvmir2hll/ir/while_loop_stmt.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/dead_code_optimizer.h"
+#include "retdec/llvmir2hll/support/debug.h"
+
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -37,11 +40,6 @@ DeadCodeOptimizer::DeadCodeOptimizer(ShPtr<Module> module,
 	PRECONDITION_NON_NULL(module);
 	PRECONDITION_NON_NULL(arithmExprEvaluator);
 }
-
-/**
-* @brief Destructs the optimizer.
-*/
-DeadCodeOptimizer::~DeadCodeOptimizer() {}
 
 void DeadCodeOptimizer::visit(ShPtr<IfStmt> stmt) {
 	FuncOptimizer::visit(stmt);
@@ -84,8 +82,8 @@ void DeadCodeOptimizer::tryToOptimizeIfStmt(ShPtr<IfStmt> stmt) {
 */
 IfStmt::clause_iterator DeadCodeOptimizer::findTrueClause(ShPtr<IfStmt> stmt) {
 	for (auto i = stmt->clause_begin(), e = stmt->clause_end(); i != e; ++i) {
-		Maybe<bool> boolResult(arithmExprEvaluator->toBool(i->first));
-		if (boolResult && boolResult.get()) {
+		std::optional<bool> boolResult(arithmExprEvaluator->toBool(i->first));
+		if (boolResult && boolResult.value()) {
 			// Evaluation was successful and a true clause was found.
 			return i;
 		}
@@ -102,11 +100,11 @@ IfStmt::clause_iterator DeadCodeOptimizer::findTrueClause(ShPtr<IfStmt> stmt) {
 void DeadCodeOptimizer::removeFalseClausesWithoutGotoLabel(ShPtr<IfStmt> stmt) {
 	auto i = stmt->clause_begin();
 	while (i != stmt->clause_end()) {
-		Maybe<bool> boolResult(arithmExprEvaluator->toBool(i->first));
+		std::optional<bool> boolResult(arithmExprEvaluator->toBool(i->first));
 		if (!boolResult) {
 			// Evaluation not successful. Can't be removed.
 			i++;
-		} else if (!boolResult.get()) {
+		} else if (!boolResult.value()) {
 			// Condition was evaluated as false.
 			if (GotoTargetAnalysis::hasGotoTargets(i->second)) {
 				// This clause can't be removed because has goto label.
@@ -299,7 +297,7 @@ SwitchStmt::clause_iterator DeadCodeOptimizer::
 		findClauseWithCondEqualToControlExpr(ShPtr<SwitchStmt> stmt,
 			ShPtr<Constant> controlExpr) {
 	auto controlExprConstInt = cast<ConstInt>(controlExpr);
-	auto controlExprConstFloat = cast<ConstInt>(controlExpr);
+	auto controlExprConstFloat = cast<ConstFloat>(controlExpr);
 	if (!controlExprConstInt && !controlExprConstFloat) {
 		return stmt->clause_end();
 	}
@@ -400,8 +398,8 @@ void DeadCodeOptimizer::visit(ShPtr<WhileLoopStmt> stmt) {
 * @param[in] stmt @c WhileLoopStmt to optimize.
 */
 void DeadCodeOptimizer::tryToOptimizeWhileLoopStmt(ShPtr<WhileLoopStmt> stmt) {
-	Maybe<bool> boolResult(arithmExprEvaluator->toBool(stmt->getCondition()));
-	if (boolResult && !boolResult.get()) {
+	std::optional<bool> boolResult(arithmExprEvaluator->toBool(stmt->getCondition()));
+	if (boolResult && !boolResult.value()) {
 		// while (false) {
 		//    statement;
 		// }
@@ -437,9 +435,9 @@ void DeadCodeOptimizer::tryToOptimizeForLoopStmt(ShPtr<ForLoopStmt> stmt) {
 		varValues[stmt->getIndVar()] = startValue;
 	}
 
-	Maybe<bool> boolResult(arithmExprEvaluator->toBool(stmt->getEndCond(),
+	std::optional<bool> boolResult(arithmExprEvaluator->toBool(stmt->getEndCond(),
 		varValues));
-	if (boolResult && !boolResult.get()) {
+	if (boolResult && !boolResult.value()) {
 		// for (i = 5; i < 4; i++) {
 		//    statement;
 		// }
@@ -454,3 +452,4 @@ void DeadCodeOptimizer::tryToOptimizeForLoopStmt(ShPtr<ForLoopStmt> stmt) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

@@ -5,9 +5,10 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/semantics/semantics/impl_support/get_name_of_var_storing_result.h"
-#include "llvmir2hll/semantics/semantics/win_api_semantics/get_name_of_var_storing_result.h"
+#include "retdec/llvmir2hll/semantics/semantics/impl_support/get_name_of_var_storing_result.h"
+#include "retdec/llvmir2hll/semantics/semantics/win_api_semantics/get_name_of_var_storing_result.h"
 
+namespace retdec {
 namespace llvmir2hll {
 namespace semantics {
 namespace win_api {
@@ -91,10 +92,11 @@ const StringStringUMap &FUNC_VAR_NAME_MAP(initFuncVarNameMap());
 *
 * See its description for more details.
 */
-Maybe<std::string> getNameOfVarStoringResult(const std::string &funcName) {
+std::optional<std::string> getNameOfVarStoringResult(const std::string &funcName) {
 	return getNameOfVarStoringResultFromMap(funcName, FUNC_VAR_NAME_MAP);
 }
 
 } // namespace win_api
 } // namespace semantics
 } // namespace llvmir2hll
+} // namespace retdec

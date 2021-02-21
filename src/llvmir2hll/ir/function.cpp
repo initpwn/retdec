@@ -4,21 +4,23 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/empty_stmt.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/int_type.h"
-#include "llvmir2hll/ir/statement.h"
-#include "llvmir2hll/ir/type.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
-#include "tl-cpputils/container.h"
+#include "retdec/llvmir2hll/ir/empty_stmt.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/int_type.h"
+#include "retdec/llvmir2hll/ir/module.h"
+#include "retdec/llvmir2hll/ir/statement.h"
+#include "retdec/llvmir2hll/ir/type.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
+#include "retdec/utils/container.h"
 
-using tl_cpputils::getNthItem;
-using tl_cpputils::hasItem;
-using tl_cpputils::removeItem;
-using tl_cpputils::setDifference;
+using retdec::utils::getNthItem;
+using retdec::utils::hasItem;
+using retdec::utils::removeItem;
+using retdec::utils::setDifference;
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -26,9 +28,9 @@ namespace llvmir2hll {
 *
 * See create() for more information.
 */
-Function::Function(ShPtr<Type> retType, std::string name, VarVector params,
-		VarSet localVars, ShPtr<Statement> body, bool isVarArg):
-			retType(retType), params(params), localVars(localVars),
+Function::Function(ShPtr<Module> module, ShPtr<Type> retType, std::string name,
+		VarVector params, VarSet localVars, ShPtr<Statement> body, bool isVarArg):
+			module(module), retType(retType), params(params), localVars(localVars),
 			body(body), funcVar(), varArg(isVarArg) {
 	includeParamsIntoLocalVars();
 
@@ -37,11 +39,6 @@ Function::Function(ShPtr<Type> retType, std::string name, VarVector params,
 	// not created yet.
 	funcVar = Variable::create(name, getType());
 }
-
-/**
-* @brief Destructs the function.
-*/
-Function::~Function() {}
 
 bool Function::isEqualTo(ShPtr<Value> otherValue) const {
 	// The types of compared instances have to match.
@@ -232,6 +229,25 @@ ShPtr<Variable> Function::getAsVar() const {
 */
 ShPtr<Type> Function::getType() const {
 	return retType;
+}
+
+ShPtr<Module> Function::getModule() const {
+	return module.lock();
+}
+
+AddressRange Function::getAddressRange() const {
+	return getModule()
+		? getModule()->getAddressRangeForFunc(
+			std::dynamic_pointer_cast<const Function>(shared_from_this()))
+		: NO_ADDRESS_RANGE;
+}
+
+Address Function::getStartAddress() const {
+	return getAddressRange().getStart();
+}
+
+Address Function::getEndAddress() const {
+	return getAddressRange().getEnd();
 }
 
 /**
@@ -483,6 +499,7 @@ ShPtr<Value> Function::clone() {
 /**
 * @brief Constructs a new function.
 *
+* @param[in] module Module this function belongs to.
 * @param[in] retType Function return type.
 * @param[in] name Function name.
 * @param[in] params Parameter list.
@@ -496,10 +513,11 @@ ShPtr<Value> Function::clone() {
 *
 * To build functions in a simpler way, use FunctionBuilder.
 */
-ShPtr<Function> Function::create(ShPtr<Type> retType, std::string name,
-		VarVector params, VarSet localVars, ShPtr<Statement> body, bool isVarArg) {
-	ShPtr<Function> func(new Function(retType, name, params, localVars, body,
-		isVarArg));
+ShPtr<Function> Function::create(ShPtr<Module> module, ShPtr<Type> retType,
+		std::string name, VarVector params, VarSet localVars,
+		ShPtr<Statement> body, bool isVarArg) {
+	ShPtr<Function> func(
+		new Function(module, retType, name, params, localVars, body, isVarArg));
 
 	// Initialization (recall that shared_from_this() cannot be called in a
 	// constructor).
@@ -551,7 +569,7 @@ void Function::update(ShPtr<Value> subject, ShPtr<Value> arg) {
 			if (body->hasSuccessor()) {
 				setBody(body->getSuccessor());
 			} else {
-				setBody(EmptyStmt::create());
+				setBody(EmptyStmt::create(nullptr, getStartAddress()));
 			}
 		}
 		return;
@@ -611,3 +629,4 @@ void Function::includeParamsIntoLocalVars() {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

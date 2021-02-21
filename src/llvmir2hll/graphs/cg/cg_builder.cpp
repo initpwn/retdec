@@ -4,15 +4,16 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/graphs/cg/cg_builder.h"
-#include "llvmir2hll/ir/call_expr.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/module.h"
-#include "llvmir2hll/ir/statement.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/utils/ir.h"
+#include "retdec/llvmir2hll/graphs/cg/cg_builder.h"
+#include "retdec/llvmir2hll/ir/call_expr.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/module.h"
+#include "retdec/llvmir2hll/ir/statement.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/utils/ir.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -20,11 +21,6 @@ namespace llvmir2hll {
 */
 CGBuilder::CGBuilder(ShPtr<Module> module):
 	OrderedAllVisitor(), cg(new CG(module)) {}
-
-/**
-* @brief Destructs the builder.
-*/
-CGBuilder::~CGBuilder() {}
 
 /**
 * @brief Returns a CG of the given @a module.
@@ -96,3 +92,4 @@ void CGBuilder::visit(ShPtr<CallExpr> expr) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

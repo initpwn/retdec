@@ -4,10 +4,11 @@
  * @copyright (c) 2017 Avast Software, licensed under the MIT license
  */
 
-#include "bin2llvmir/providers/debugformat.h"
+#include "retdec/bin2llvmir/providers/debugformat.h"
 
 using namespace llvm;
 
+namespace retdec {
 namespace bin2llvmir {
 
 //
@@ -26,17 +27,15 @@ std::map<Module*, DebugFormat> DebugFormatProvider::_module2debug;
 
 /**
  * Create and add to provider a debug info for the given module @a m, file
- * image @a objf, pdb file path @a pdbFile, possible PE image base @a imageBase
- * and demangler @a demangler.
+ * image @a objf, pdb file path @a pdbFile, and demangler @a demangler.
  * @return Created and added debug ingo or @c nullptr if something went wrong
  *         and it was not successfully created.
  */
 DebugFormat* DebugFormatProvider::addDebugFormat(
 				llvm::Module* m,
-				loader::Image* objf,
+				retdec::loader::Image* objf,
 				const std::string& pdbFile,
-				const tl_cpputils::Address& imageBase,
-				demangler::CDemangler* demangler)
+				Demangler* demangler)
 {
 	if (objf == nullptr)
 	{
@@ -49,8 +48,9 @@ DebugFormat* DebugFormatProvider::addDebugFormat(
 					objf,
 					pdbFile,
 					nullptr, // symbol table -- not needed.
-					demangler,
-					imageBase));
+					demangler ? demangler->getDemangler() : nullptr
+			)
+	);
 	return &p.first->second;
 }
 
@@ -88,3 +88,4 @@ void DebugFormatProvider::clear()
 }
 
 } // namespace bin2llvmir
+} // namespace retdec

@@ -7,16 +7,19 @@
 #include <gtest/gtest.h>
 
 #include "llvmir2hll/analysis/tests_with_value_analysis.h"
-#include "llvmir2hll/analysis/value_analysis.h"
+#include "retdec/llvmir2hll/analysis/value_analysis.h"
 #include "llvmir2hll/ir/tests_with_module.h"
-#include "llvmir2hll/obtainer/call_info_obtainer.h"
+#include "retdec/llvmir2hll/obtainer/call_info_obtainer.h"
 #include "llvmir2hll/obtainer/call_info_obtainer_mock.h"
-#include "llvmir2hll/pattern/pattern_finder_runners/cli_pattern_finder_runner.h"
+#include "retdec/llvmir2hll/pattern/pattern_finder_runners/cli_pattern_finder_runner.h"
 #include "llvmir2hll/pattern/pattern_finder_mock.h"
 #include "llvmir2hll/pattern/pattern_mock.h"
+#include "retdec/utils/io/log.h"
 
 using namespace ::testing;
+using namespace retdec::utils::io;
 
+namespace retdec {
 namespace llvmir2hll {
 namespace tests {
 
@@ -36,8 +39,8 @@ RunWithOnePatternFinderCallsFindPatternAndPrintOnThatFinder) {
 	NiceMock<PatternFinderMock> *pfMock(new NiceMock<PatternFinderMock>(va, cio));
 	ShPtr<PatternFinder> pf(pfMock);
 
-	std::string outputStr;
-	llvm::raw_string_ostream os(outputStr);
+	std::stringstream outputStr;
+	Logger os(outputStr);
 
 	// Expectations.
 	PatternFinder::Patterns patterns;
@@ -53,9 +56,9 @@ RunWithOnePatternFinderCallsFindPatternAndPrintOnThatFinder) {
 
 	// Test.
 	pfr->run(pf, module);
-	ASSERT_FALSE(os.str().empty());
+	ASSERT_FALSE(outputStr.str().empty());
 	// The ID of the pattern finder should be present in the output.
-	EXPECT_TRUE(os.str().find(PF_MOCK_ID) != std::string::npos);
+	EXPECT_TRUE(outputStr.str().find(PF_MOCK_ID) != std::string::npos);
 }
 
 TEST_F(CLIPatternFinderRunnerTests,
@@ -63,8 +66,8 @@ RunWithTwoPatternFindersCallsFindPatternAndPrintOnTheseFinders) {
 	INSTANTIATE_ALIAS_ANALYSIS_AND_VALUE_ANALYSIS(module);
 	INSTANTIATE_CALL_INFO_OBTAINER_MOCK();
 
-	std::string outputStr;
-	llvm::raw_string_ostream os(outputStr);
+	std::stringstream outputStr;
+	Logger os(outputStr);
 
 	// Mocks.
 	NiceMock<PatternMock> *p1Mock(new NiceMock<PatternMock>());
@@ -101,11 +104,12 @@ RunWithTwoPatternFindersCallsFindPatternAndPrintOnTheseFinders) {
 
 	// Test.
 	pfr->run(pfs, module);
-	ASSERT_FALSE(os.str().empty());
+	ASSERT_FALSE(outputStr.str().empty());
 	// The IDs of the pattern finders should be present in the output.
-	EXPECT_TRUE(os.str().find(PF1_MOCK_ID) != std::string::npos);
-	EXPECT_TRUE(os.str().find(PF2_MOCK_ID) != std::string::npos);
+	EXPECT_TRUE(outputStr.str().find(PF1_MOCK_ID) != std::string::npos);
+	EXPECT_TRUE(outputStr.str().find(PF2_MOCK_ID) != std::string::npos);
 }
 
 } // namespace tests
 } // namespace llvmir2hll
+} // namespace retdec

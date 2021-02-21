@@ -4,11 +4,12 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/int_type.h"
-#include "llvmir2hll/ir/neq_op_expr.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/int_type.h"
+#include "retdec/llvmir2hll/ir/neq_op_expr.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -18,13 +19,6 @@ namespace llvmir2hll {
 */
 NeqOpExpr::NeqOpExpr(ShPtr<Expression> op1, ShPtr<Expression> op2):
 	BinaryOpExpr(op1, op2) {}
-
-/**
-* @brief Destructs the operator.
-*/
-NeqOpExpr::~NeqOpExpr() {
-	// Observers are removed in the superclass.
-}
 
 bool NeqOpExpr::isEqualTo(ShPtr<Value> otherValue) const {
 	if (ShPtr<NeqOpExpr> otherValueNeqOpExpr = cast<NeqOpExpr>(otherValue)) {
@@ -74,3 +68,4 @@ void NeqOpExpr::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

@@ -4,34 +4,35 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/assign_stmt.h"
-#include "llvmir2hll/ir/call_expr.h"
-#include "llvmir2hll/ir/for_loop_stmt.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/module.h"
-#include "llvmir2hll/ir/return_stmt.h"
-#include "llvmir2hll/ir/statement.h"
-#include "llvmir2hll/ir/var_def_stmt.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/semantics/semantics.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/maybe.h"
-#include "llvmir2hll/support/statements_counter.h"
-#include "llvmir2hll/support/types.h"
-#include "llvmir2hll/utils/ir.h"
-#include "llvmir2hll/var_name_gen/var_name_gens/num_var_name_gen.h"
-#include "llvmir2hll/var_renamer/var_renamer_factory.h"
-#include "llvmir2hll/var_renamer/var_renamers/readable_var_renamer.h"
-#include "tl-cpputils/array.h"
-#include "tl-cpputils/container.h"
-#include "tl-cpputils/conversion.h"
+#include <optional>
+
+#include "retdec/llvmir2hll/ir/assign_stmt.h"
+#include "retdec/llvmir2hll/ir/call_expr.h"
+#include "retdec/llvmir2hll/ir/for_loop_stmt.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/module.h"
+#include "retdec/llvmir2hll/ir/return_stmt.h"
+#include "retdec/llvmir2hll/ir/statement.h"
+#include "retdec/llvmir2hll/ir/var_def_stmt.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/semantics/semantics.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/statements_counter.h"
+#include "retdec/llvmir2hll/support/types.h"
+#include "retdec/llvmir2hll/utils/ir.h"
+#include "retdec/llvmir2hll/var_name_gen/var_name_gens/num_var_name_gen.h"
+#include "retdec/llvmir2hll/var_renamer/var_renamer_factory.h"
+#include "retdec/llvmir2hll/var_renamer/var_renamers/readable_var_renamer.h"
+#include "retdec/utils/array.h"
+#include "retdec/utils/container.h"
+#include "retdec/utils/conversion.h"
 
 using namespace std::string_literals;
 
-using tl_cpputils::addToSet;
-using tl_cpputils::arraySize;
-using tl_cpputils::toString;
+using retdec::utils::addToSet;
+using retdec::utils::arraySize;
 
+namespace retdec {
 namespace llvmir2hll {
 
 namespace {
@@ -295,10 +296,10 @@ void ReadableVarRenamer::tryRenameVarStoringCallResult(ShPtr<Statement> stmt) {
 		return;
 	}
 
-	Maybe<std::string> newName(module->getSemantics()->getNameOfVarStoringResult(
+	std::optional<std::string> newName(module->getSemantics()->getNameOfVarStoringResult(
 		calledFunc->getName()));
 	if (newName) {
-		assignName(lhsVar, newName.get(), currFunc);
+		assignName(lhsVar, newName.value(), currFunc);
 	}
 }
 
@@ -344,10 +345,10 @@ void ReadableVarRenamer::tryRenameVarPassedAsArgToFuncCall(
 		return;
 	}
 
-	Maybe<std::string> newName(module->getSemantics()->getNameOfParam(
+	std::optional<std::string> newName(module->getSemantics()->getNameOfParam(
 		calledFunc->getName(), argPos));
 	if (newName) {
-		assignName(var, newName.get(), currFunc);
+		assignName(var, newName.value(), currFunc);
 	}
 }
 
@@ -376,7 +377,7 @@ ShPtr<Function> ReadableVarRenamer::getDeclaredFunc(ShPtr<CallExpr> expr) const 
 */
 ShPtr<Variable> ReadableVarRenamer::getVarFromCallArg(ShPtr<Expression> arg) const {
 	// Motivation: For example, the given function call is present when
-	// decompiling file enc_1_.exe from #1457:
+	// decompiling file enc_1_.exe:
 	//
 	//     GetSystemTimeAsFileTime((struct FILETIME *)&v1);
 	//
@@ -404,7 +405,7 @@ std::string ReadableVarRenamer::genNameForFuncParam(
 	// number the parameters correctly, e.g. p2 is always the second parameter,
 	// no matter if the first parameter has assigned a name from debug
 	// information.
-	return "a"s + toString(func->getParamPos(var));
+	return "a"s + std::to_string(func->getParamPos(var));
 }
 
 void ReadableVarRenamer::visit(ShPtr<ForLoopStmt> stmt) {
@@ -513,3 +514,4 @@ void ReadableVarRenamer::visit(ShPtr<Variable> var) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

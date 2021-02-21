@@ -4,10 +4,11 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/pointer_type.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/pointer_type.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -17,11 +18,6 @@ namespace llvmir2hll {
 */
 PointerType::PointerType(ShPtr<Type> containedType):
 	Type(), containedType(containedType) {}
-
-/**
-* @brief Destructs the type.
-*/
-PointerType::~PointerType() {}
 
 ShPtr<Value> PointerType::clone() {
 	return PointerType::create(ucast<Type>(containedType->clone()));
@@ -74,3 +70,4 @@ void PointerType::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

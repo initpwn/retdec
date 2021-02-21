@@ -4,14 +4,15 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/semantics/semantics/compound_semantics.h"
-#include "llvmir2hll/semantics/semantics/compound_semantics_builder.h"
-#include "llvmir2hll/semantics/semantics_factory.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvm-support/diagnostics.h"
+#include "retdec/llvmir2hll/semantics/semantics/compound_semantics.h"
+#include "retdec/llvmir2hll/semantics/semantics/compound_semantics_builder.h"
+#include "retdec/llvmir2hll/semantics/semantics_factory.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/utils/io/log.h"
 
-using namespace llvm_support;
+using namespace retdec::utils::io;
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -37,8 +38,9 @@ ShPtr<CompoundSemantics> CompoundSemanticsBuilder::build(
 		if (semantics) {
 			compoundSemantics->appendSemantics(semantics);
 		} else {
-			printWarningMessage("There is no registered semantics with ID \"",
-				id, "\", skipping.");
+			Log::error() << Log::Warning
+				<< "There is no registered semantics with ID \"" << id << "\", skipping."
+				<< std::endl;
 		}
 	}
 
@@ -46,3 +48,4 @@ ShPtr<CompoundSemantics> CompoundSemanticsBuilder::build(
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

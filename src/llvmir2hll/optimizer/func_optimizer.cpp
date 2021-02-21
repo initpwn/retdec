@@ -4,11 +4,12 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/module.h"
-#include "llvmir2hll/optimizer/func_optimizer.h"
-#include "llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/module.h"
+#include "retdec/llvmir2hll/optimizer/func_optimizer.h"
+#include "retdec/llvmir2hll/support/debug.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -23,11 +24,6 @@ FuncOptimizer::FuncOptimizer(ShPtr<Module> module):
 	Optimizer(module), currFunc() {
 		PRECONDITION_NON_NULL(module);
 	}
-
-/**
-* @brief Destructs the optimizer.
-*/
-FuncOptimizer::~FuncOptimizer() {}
 
 /**
 * @brief Performs the optimization on all functions in the module.
@@ -58,3 +54,4 @@ void FuncOptimizer::runOnFunction(ShPtr<Function> func) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

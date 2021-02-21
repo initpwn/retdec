@@ -4,10 +4,11 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/assign_op_expr.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/assign_op_expr.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -17,13 +18,6 @@ namespace llvmir2hll {
 */
 AssignOpExpr::AssignOpExpr(ShPtr<Expression> op1, ShPtr<Expression> op2):
 	BinaryOpExpr(op1, op2) {}
-
-/**
-* @brief Destructs the operator.
-*/
-AssignOpExpr::~AssignOpExpr() {
-	// Observers are removed in the superclass.
-}
 
 bool AssignOpExpr::isEqualTo(ShPtr<Value> otherValue) const {
 	if (auto otherExpr = cast<AssignOpExpr>(otherValue)) {
@@ -70,3 +64,4 @@ void AssignOpExpr::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

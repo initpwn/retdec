@@ -4,11 +4,12 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/ternary_op_expr.h"
-#include "llvmir2hll/ir/unknown_type.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/ternary_op_expr.h"
+#include "retdec/llvmir2hll/ir/unknown_type.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -19,11 +20,6 @@ namespace llvmir2hll {
 TernaryOpExpr::TernaryOpExpr(ShPtr<Expression> cond, ShPtr<Expression> trueValue,
 	ShPtr<Expression> falseValue):
 		Expression(), cond(cond), trueValue(trueValue), falseValue(falseValue) {}
-
-/**
-* @brief Destructs the operator.
-*/
-TernaryOpExpr::~TernaryOpExpr() {}
 
 ShPtr<Value> TernaryOpExpr::clone() {
 	ShPtr<TernaryOpExpr> ternaryOpExpr(TernaryOpExpr::create(
@@ -207,3 +203,4 @@ void TernaryOpExpr::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

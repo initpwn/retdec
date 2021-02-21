@@ -4,13 +4,14 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/analysis/null_pointer_analysis.h"
-#include "llvmir2hll/ir/const_null_pointer.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/global_var_def.h"
-#include "llvmir2hll/ir/module.h"
-#include "llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/analysis/null_pointer_analysis.h"
+#include "retdec/llvmir2hll/ir/const_null_pointer.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/global_var_def.h"
+#include "retdec/llvmir2hll/ir/module.h"
+#include "retdec/llvmir2hll/support/debug.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -20,11 +21,6 @@ namespace llvmir2hll {
 */
 NullPointerAnalysis::NullPointerAnalysis(ShPtr<Module> module):
 	OrderedAllVisitor(), module(module), foundNullPointer(false) {}
-
-/**
-* @brief Destructs the analysis.
-*/
-NullPointerAnalysis::~NullPointerAnalysis() {}
 
 /**
 * @brief Returns @c true if @a module uses null pointers, @c false otherwise.
@@ -86,3 +82,4 @@ void NullPointerAnalysis::visit(ShPtr<ConstNullPointer> constant) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

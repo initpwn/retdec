@@ -4,50 +4,51 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/evaluator/arithm_expr_evaluator.h"
-#include "llvmir2hll/ir/add_op_expr.h"
-#include "llvmir2hll/ir/address_op_expr.h"
-#include "llvmir2hll/ir/and_op_expr.h"
-#include "llvmir2hll/ir/array_index_op_expr.h"
-#include "llvmir2hll/ir/bit_and_op_expr.h"
-#include "llvmir2hll/ir/bit_cast_expr.h"
-#include "llvmir2hll/ir/bit_or_op_expr.h"
-#include "llvmir2hll/ir/bit_shl_op_expr.h"
-#include "llvmir2hll/ir/bit_shr_op_expr.h"
-#include "llvmir2hll/ir/bit_xor_op_expr.h"
-#include "llvmir2hll/ir/call_expr.h"
-#include "llvmir2hll/ir/const_array.h"
-#include "llvmir2hll/ir/const_null_pointer.h"
-#include "llvmir2hll/ir/const_string.h"
-#include "llvmir2hll/ir/const_struct.h"
-#include "llvmir2hll/ir/const_symbol.h"
-#include "llvmir2hll/ir/deref_op_expr.h"
-#include "llvmir2hll/ir/div_op_expr.h"
-#include "llvmir2hll/ir/eq_op_expr.h"
-#include "llvmir2hll/ir/expression.h"
-#include "llvmir2hll/ir/ext_cast_expr.h"
-#include "llvmir2hll/ir/fp_to_int_cast_expr.h"
-#include "llvmir2hll/ir/gt_eq_op_expr.h"
-#include "llvmir2hll/ir/gt_op_expr.h"
-#include "llvmir2hll/ir/int_to_fp_cast_expr.h"
-#include "llvmir2hll/ir/int_to_ptr_cast_expr.h"
-#include "llvmir2hll/ir/lt_eq_op_expr.h"
-#include "llvmir2hll/ir/lt_op_expr.h"
-#include "llvmir2hll/ir/mod_op_expr.h"
-#include "llvmir2hll/ir/mul_op_expr.h"
-#include "llvmir2hll/ir/neg_op_expr.h"
-#include "llvmir2hll/ir/neq_op_expr.h"
-#include "llvmir2hll/ir/not_op_expr.h"
-#include "llvmir2hll/ir/or_op_expr.h"
-#include "llvmir2hll/ir/pointer_type.h"
-#include "llvmir2hll/ir/ptr_to_int_cast_expr.h"
-#include "llvmir2hll/ir/struct_index_op_expr.h"
-#include "llvmir2hll/ir/sub_op_expr.h"
-#include "llvmir2hll/ir/ternary_op_expr.h"
-#include "llvmir2hll/ir/trunc_cast_expr.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/evaluator/arithm_expr_evaluator.h"
+#include "retdec/llvmir2hll/ir/add_op_expr.h"
+#include "retdec/llvmir2hll/ir/address_op_expr.h"
+#include "retdec/llvmir2hll/ir/and_op_expr.h"
+#include "retdec/llvmir2hll/ir/array_index_op_expr.h"
+#include "retdec/llvmir2hll/ir/bit_and_op_expr.h"
+#include "retdec/llvmir2hll/ir/bit_cast_expr.h"
+#include "retdec/llvmir2hll/ir/bit_or_op_expr.h"
+#include "retdec/llvmir2hll/ir/bit_shl_op_expr.h"
+#include "retdec/llvmir2hll/ir/bit_shr_op_expr.h"
+#include "retdec/llvmir2hll/ir/bit_xor_op_expr.h"
+#include "retdec/llvmir2hll/ir/call_expr.h"
+#include "retdec/llvmir2hll/ir/const_array.h"
+#include "retdec/llvmir2hll/ir/const_null_pointer.h"
+#include "retdec/llvmir2hll/ir/const_string.h"
+#include "retdec/llvmir2hll/ir/const_struct.h"
+#include "retdec/llvmir2hll/ir/const_symbol.h"
+#include "retdec/llvmir2hll/ir/deref_op_expr.h"
+#include "retdec/llvmir2hll/ir/div_op_expr.h"
+#include "retdec/llvmir2hll/ir/eq_op_expr.h"
+#include "retdec/llvmir2hll/ir/expression.h"
+#include "retdec/llvmir2hll/ir/ext_cast_expr.h"
+#include "retdec/llvmir2hll/ir/fp_to_int_cast_expr.h"
+#include "retdec/llvmir2hll/ir/gt_eq_op_expr.h"
+#include "retdec/llvmir2hll/ir/gt_op_expr.h"
+#include "retdec/llvmir2hll/ir/int_to_fp_cast_expr.h"
+#include "retdec/llvmir2hll/ir/int_to_ptr_cast_expr.h"
+#include "retdec/llvmir2hll/ir/lt_eq_op_expr.h"
+#include "retdec/llvmir2hll/ir/lt_op_expr.h"
+#include "retdec/llvmir2hll/ir/mod_op_expr.h"
+#include "retdec/llvmir2hll/ir/mul_op_expr.h"
+#include "retdec/llvmir2hll/ir/neg_op_expr.h"
+#include "retdec/llvmir2hll/ir/neq_op_expr.h"
+#include "retdec/llvmir2hll/ir/not_op_expr.h"
+#include "retdec/llvmir2hll/ir/or_op_expr.h"
+#include "retdec/llvmir2hll/ir/pointer_type.h"
+#include "retdec/llvmir2hll/ir/ptr_to_int_cast_expr.h"
+#include "retdec/llvmir2hll/ir/struct_index_op_expr.h"
+#include "retdec/llvmir2hll/ir/sub_op_expr.h"
+#include "retdec/llvmir2hll/ir/ternary_op_expr.h"
+#include "retdec/llvmir2hll/ir/trunc_cast_expr.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/support/debug.h"
 
+namespace retdec {
 namespace llvmir2hll {
 namespace {
 
@@ -94,18 +95,6 @@ void clearStack(ArithmExprEvaluator::ConstStack &stack) {
 } // anonymous namespace
 
 /**
-* @brief Constructs the ArithmExprEvaluator.
-*
-* Use create() to create instances.
-*/
-ArithmExprEvaluator::ArithmExprEvaluator() : canBeEvaluated(true) {}
-
-/**
-* @brief Destructor.
-*/
-ArithmExprEvaluator::~ArithmExprEvaluator() {}
-
-/**
 * @brief Evaluate an @a expr.
 *
 * @param[in] expr An expression to evaluation.
@@ -144,24 +133,24 @@ ShPtr<Constant> ArithmExprEvaluator::evaluate(ShPtr<Expression> expr,
 * @param[in] expr An expression to evaluate.
 * @param[in] varValues Map of constants to substitute the variables in @a expr.
 *
-* @return <tt>Just(bool)</tt> if the @a expr after evaluation is @c bool,
-*         <tt>Nothing<bool>()</tt> otherwise.
+* @return Bool value if the @a expr after evaluation is @c bool,
+*         <tt>std::nullopt<bool>()</tt> otherwise.
 */
-Maybe<bool> ArithmExprEvaluator::toBool(ShPtr<Expression> expr, VarConstMap
+std::optional<bool> ArithmExprEvaluator::toBool(ShPtr<Expression> expr, VarConstMap
 		varValues) {
 	ShPtr<Constant> result(evaluate(expr, varValues));
 	if (!result) {
-		return Nothing<bool>();
+		return std::nullopt;
 	}
 
 	if (ShPtr<ConstInt> constInt = cast<ConstInt>(result)) {
-			return Just(!constInt->isZero());
+			return !constInt->isZero();
 	} else if (ShPtr<ConstFloat> constFloat = cast<ConstFloat>(result)) {
-		return Just(!constFloat->isZero());
+		return !constFloat->isZero();
 	} else if (ShPtr<ConstBool> constBool = cast<ConstBool>(result)) {
-		return Just(constBool->getValue());
+		return constBool->getValue();
 	} else {
-		return Nothing<bool>();
+		return std::nullopt;
 	}
 }
 
@@ -245,15 +234,15 @@ void ArithmExprEvaluator::visit(ShPtr<EqOpExpr> expr) {
 		}
 
 		ShPtr<Constant> result;
-		if (Maybe<ConstIntPair> constIntPair = castConstPair<ConstInt>(
+		if (std::optional<ConstIntPair> constIntPair = castConstPair<ConstInt>(
 				constPair)) {
 			result = performOperationOverApInt(constIntPair, &llvm::APInt::eq);
-		} else if (Maybe<ConstFloatPair> constFloatPair = castConstPair<
+		} else if (std::optional<ConstFloatPair> constFloatPair = castConstPair<
 				ConstFloat>(constPair)) {
 			result = ConstBool::create(
 				performOperationOverApFloat(constFloatPair) ==
 					llvm::APFloat::cmpEqual);
-		} else if (Maybe<ConstBoolPair> constBoolPair = castConstPair<
+		} else if (std::optional<ConstBoolPair> constBoolPair = castConstPair<
 				ConstBool>(constPair)) {
 			result = ConstBool::create(constBoolPair->first->getValue() ==
 				constBoolPair->second->getValue());
@@ -276,15 +265,15 @@ void ArithmExprEvaluator::visit(ShPtr<NeqOpExpr> expr) {
 		}
 
 		ShPtr<Constant> result;
-		if (Maybe<ConstIntPair> constIntPair = castConstPair<ConstInt>(
+		if (std::optional<ConstIntPair> constIntPair = castConstPair<ConstInt>(
 				constPair)) {
 			result = performOperationOverApInt(constIntPair, &llvm::APInt::ne);
-		} else if (Maybe<ConstFloatPair> constFloatPair = castConstPair<
+		} else if (std::optional<ConstFloatPair> constFloatPair = castConstPair<
 				ConstFloat>(constPair)) {
 			result = ConstBool::create(
 				performOperationOverApFloat(constFloatPair) !=
 					llvm::APFloat::cmpEqual);
-		} else if (Maybe<ConstBoolPair> constBoolPair = castConstPair<
+		} else if (std::optional<ConstBoolPair> constBoolPair = castConstPair<
 				ConstBool>(constPair)) {
 			result = ConstBool::create(constBoolPair->first->getValue() !=
 				constBoolPair->second->getValue());
@@ -307,10 +296,10 @@ void ArithmExprEvaluator::visit(ShPtr<LtEqOpExpr> expr) {
 		}
 
 		ShPtr<Constant> result;
-		if (Maybe<ConstIntPair> constIntPair = castConstPair<ConstInt>(
+		if (std::optional<ConstIntPair> constIntPair = castConstPair<ConstInt>(
 				constPair)) {
 			result = performOperationOverApInt(constIntPair, &llvm::APInt::sle);
-		} else if (Maybe<ConstFloatPair> constFloatPair = castConstPair<
+		} else if (std::optional<ConstFloatPair> constFloatPair = castConstPair<
 				ConstFloat>(constPair)) {
 			llvm::APFloat::cmpResult cmpResult = performOperationOverApFloat(
 				constFloatPair);
@@ -335,10 +324,10 @@ void ArithmExprEvaluator::visit(ShPtr<GtEqOpExpr> expr) {
 		}
 
 		ShPtr<Constant> result;
-		if (Maybe<ConstIntPair> constIntPair = castConstPair<ConstInt>(
+		if (std::optional<ConstIntPair> constIntPair = castConstPair<ConstInt>(
 				constPair)) {
 			result = performOperationOverApInt(constIntPair, &llvm::APInt::sge);
-		} else if (Maybe<ConstFloatPair> constFloatPair = castConstPair<
+		} else if (std::optional<ConstFloatPair> constFloatPair = castConstPair<
 				ConstFloat>(constPair)) {
 			llvm::APFloat::cmpResult cmpResult = performOperationOverApFloat(
 				constFloatPair);
@@ -363,10 +352,10 @@ void ArithmExprEvaluator::visit(ShPtr<LtOpExpr> expr) {
 		}
 
 		ShPtr<Constant> result;
-		if (Maybe<ConstIntPair> constIntPair = castConstPair<ConstInt>(
+		if (std::optional<ConstIntPair> constIntPair = castConstPair<ConstInt>(
 				constPair)) {
 			result = performOperationOverApInt(constIntPair, &llvm::APInt::slt);
-		} else if (Maybe<ConstFloatPair> constFloatPair = castConstPair<
+		} else if (std::optional<ConstFloatPair> constFloatPair = castConstPair<
 				ConstFloat>(constPair)) {
 			result = ConstBool::create(
 				performOperationOverApFloat(constFloatPair) ==
@@ -390,10 +379,10 @@ void ArithmExprEvaluator::visit(ShPtr<GtOpExpr> expr) {
 		}
 
 		ShPtr<Constant> result;
-		if (Maybe<ConstIntPair> constIntPair = castConstPair<ConstInt>(
+		if (std::optional<ConstIntPair> constIntPair = castConstPair<ConstInt>(
 				constPair)) {
 			result = performOperationOverApInt(constIntPair, &llvm::APInt::sgt);
-		} else if (Maybe<ConstFloatPair> constFloatPair = castConstPair<
+		} else if (std::optional<ConstFloatPair> constFloatPair = castConstPair<
 				ConstFloat>(constPair)) {
 			result = ConstBool::create(
 				performOperationOverApFloat(constFloatPair) ==
@@ -419,11 +408,11 @@ void ArithmExprEvaluator::visit(ShPtr<AddOpExpr> expr) {
 		ShPtr<Constant> result;
 		bool overflow = false;
 		llvm::APFloat::opStatus opStatus = llvm::APFloat::opOK;
-		if (Maybe<ConstIntPair> constIntPair = castConstPair<ConstInt>(
+		if (std::optional<ConstIntPair> constIntPair = castConstPair<ConstInt>(
 				constPair)) {
 			result = performOperationOverApInt(constIntPair,
 				&llvm::APInt::sadd_ov, overflow);
-		} else if (Maybe<ConstFloatPair> constFloatPair = castConstPair<
+		} else if (std::optional<ConstFloatPair> constFloatPair = castConstPair<
 				ConstFloat>(constPair)) {
 			result = performOperationOverApFloat(constFloatPair,
 				&llvm::APFloat::add, opStatus);
@@ -449,11 +438,11 @@ void ArithmExprEvaluator::visit(ShPtr<SubOpExpr> expr) {
 		ShPtr<Constant> result;
 		bool overflow = false;
 		llvm::APFloat::opStatus opStatus = llvm::APFloat::opOK;
-		if (Maybe<ConstIntPair> constIntPair = castConstPair<ConstInt>(
+		if (std::optional<ConstIntPair> constIntPair = castConstPair<ConstInt>(
 				constPair)) {
 			result = performOperationOverApInt(constIntPair,
 				&llvm::APInt::ssub_ov, overflow);
-		} else if (Maybe<ConstFloatPair> constFloatPair = castConstPair<
+		} else if (std::optional<ConstFloatPair> constFloatPair = castConstPair<
 				ConstFloat>(constPair)) {
 			result = performOperationOverApFloat(constFloatPair,
 				&llvm::APFloat::subtract, opStatus);
@@ -479,11 +468,11 @@ void ArithmExprEvaluator::visit(ShPtr<MulOpExpr> expr) {
 		ShPtr<Constant> result;
 		bool overflow = false;
 		llvm::APFloat::opStatus opStatus = llvm::APFloat::opOK;
-		if (Maybe<ConstIntPair> constIntPair = castConstPair<ConstInt>(
+		if (std::optional<ConstIntPair> constIntPair = castConstPair<ConstInt>(
 				constPair)) {
 			result = performOperationOverApInt(constIntPair,
 				&llvm::APInt::smul_ov, overflow);
-		} else if (Maybe<ConstFloatPair> constFloatPair = castConstPair<
+		} else if (std::optional<ConstFloatPair> constFloatPair = castConstPair<
 				ConstFloat>(constPair)) {
 			result = performOperationOverApFloat(constFloatPair,
 				&llvm::APFloat::multiply, opStatus);
@@ -508,10 +497,10 @@ void ArithmExprEvaluator::visit(ShPtr<ModOpExpr> expr) {
 
 		ShPtr<Constant> result;
 		llvm::APFloat::opStatus opStatus = llvm::APFloat::opOK;
-		if (Maybe<ConstIntPair> constIntPair = castConstPair<ConstInt>(
+		if (std::optional<ConstIntPair> constIntPair = castConstPair<ConstInt>(
 				constPair)) {
 			result = performOperationOverApInt(constIntPair, &llvm::APInt::srem);
-		} else if (Maybe<ConstFloatPair> constFloatPair = castConstPair<
+		} else if (std::optional<ConstFloatPair> constFloatPair = castConstPair<
 				ConstFloat>(constPair)) {
 			result = performOperationOverApFloat(constFloatPair,
 				&llvm::APFloat::mod, opStatus);
@@ -537,11 +526,11 @@ void ArithmExprEvaluator::visit(ShPtr<DivOpExpr> expr) {
 		ShPtr<Constant> result;
 		bool overflow = false;
 		llvm::APFloat::opStatus opStatus = llvm::APFloat::opOK;
-		if (Maybe<ConstIntPair> constIntPair = castConstPair<ConstInt>(
+		if (std::optional<ConstIntPair> constIntPair = castConstPair<ConstInt>(
 				constPair)) {
 			result = performOperationOverApInt(constIntPair,
 				&llvm::APInt::sdiv_ov, overflow);
-		} else if (Maybe<ConstFloatPair> constFloatPair = castConstPair<
+		} else if (std::optional<ConstFloatPair> constFloatPair = castConstPair<
 				ConstFloat>(constPair)) {
 			result = performOperationOverApFloat(constFloatPair,
 				&llvm::APFloat::divide, opStatus);
@@ -565,15 +554,15 @@ void ArithmExprEvaluator::visit(ShPtr<AndOpExpr> expr) {
 		}
 
 		ShPtr<Constant> result;
-		if (Maybe<ConstIntPair> constIntPair = castConstPair<ConstInt>(
+		if (std::optional<ConstIntPair> constIntPair = castConstPair<ConstInt>(
 				constPair)) {
 			result = ConstBool::create(!constIntPair->first->isZero() &&
 				!constIntPair->second->isZero());
-		} else if (Maybe<ConstFloatPair> constFloatPair = castConstPair<
+		} else if (std::optional<ConstFloatPair> constFloatPair = castConstPair<
 				ConstFloat>(constPair)) {
 			result = ConstBool::create(!constFloatPair->first->isZero() &&
 				!constFloatPair->second->isZero());
-		} else if (Maybe<ConstBoolPair> constBoolPair = castConstPair<
+		} else if (std::optional<ConstBoolPair> constBoolPair = castConstPair<
 				ConstBool>(constPair)) {
 			result = ConstBool::create(constBoolPair->first->getValue() &&
 				constBoolPair->second->getValue());
@@ -596,15 +585,15 @@ void ArithmExprEvaluator::visit(ShPtr<OrOpExpr> expr) {
 		}
 
 		ShPtr<Constant> result;
-		if (Maybe<ConstIntPair> constIntPair = castConstPair<ConstInt>(
+		if (std::optional<ConstIntPair> constIntPair = castConstPair<ConstInt>(
 				constPair)) {
 			result = ConstBool::create(!constIntPair->first->isZero() ||
 				!constIntPair->second->isZero());
-		} else if (Maybe<ConstFloatPair> constFloatPair = castConstPair<
+		} else if (std::optional<ConstFloatPair> constFloatPair = castConstPair<
 				ConstFloat>(constPair)) {
 			result = ConstBool::create(!constFloatPair->first->isZero() ||
 				!constFloatPair->second->isZero());
-		} else if (Maybe<ConstBoolPair> constBoolPair = castConstPair<
+		} else if (std::optional<ConstBoolPair> constBoolPair = castConstPair<
 				ConstBool>(constPair)) {
 			result = ConstBool::create(constBoolPair->first->getValue() ||
 				constBoolPair->second->getValue());
@@ -627,9 +616,10 @@ void ArithmExprEvaluator::visit(ShPtr<BitAndOpExpr> expr) {
 		}
 
 		ShPtr<Constant> result;
-		if (Maybe<ConstIntPair> constIntPair = castConstPair<ConstInt>(
+		if (std::optional<ConstIntPair> constIntPair = castConstPair<ConstInt>(
 				constPair)) {
-			result = performOperationOverApInt(constIntPair, &llvm::APInt::And);
+			APSIntPair apsIntPair(getAPSIntsFromConstants(constIntPair));
+			result = ConstInt::create(apsIntPair.first & apsIntPair.second);
 		} else {
 			canBeEvaluated = false;
 		}
@@ -649,9 +639,10 @@ void ArithmExprEvaluator::visit(ShPtr<BitOrOpExpr> expr) {
 		}
 
 		ShPtr<Constant> result;
-		if (Maybe<ConstIntPair> constIntPair = castConstPair<ConstInt>(
+		if (std::optional<ConstIntPair> constIntPair = castConstPair<ConstInt>(
 				constPair)) {
-			result = performOperationOverApInt(constIntPair, &llvm::APInt::Or);
+			APSIntPair apsIntPair(getAPSIntsFromConstants(constIntPair));
+			result = ConstInt::create(apsIntPair.first | apsIntPair.second);
 		} else {
 			canBeEvaluated = false;
 		}
@@ -671,9 +662,10 @@ void ArithmExprEvaluator::visit(ShPtr<BitXorOpExpr> expr) {
 		}
 
 		ShPtr<Constant> result;
-		if (Maybe<ConstIntPair> constIntPair = castConstPair<ConstInt>(
+		if (std::optional<ConstIntPair> constIntPair = castConstPair<ConstInt>(
 				constPair)) {
-			result = performOperationOverApInt(constIntPair, &llvm::APInt::Xor);
+			APSIntPair apsIntPair(getAPSIntsFromConstants(constIntPair));
+			result = ConstInt::create(apsIntPair.first ^ apsIntPair.second);
 		} else {
 			canBeEvaluated = false;
 		}
@@ -694,7 +686,7 @@ void ArithmExprEvaluator::visit(ShPtr<BitShlOpExpr> expr) {
 
 		ShPtr<Constant> result;
 		bool overflow = false;
-		if (Maybe<ConstIntPair> constIntPair = castConstPair<ConstInt>(
+		if (std::optional<ConstIntPair> constIntPair = castConstPair<ConstInt>(
 				constPair)) {
 			APSIntPair apsIntPair(getAPSIntsFromConstants(constIntPair));
 			result = ConstInt::create(apsIntPair.first.sshl_ov(
@@ -720,7 +712,7 @@ void ArithmExprEvaluator::visit(ShPtr<BitShrOpExpr> expr) {
 
 		if (expr->isArithmetical()) {
 			ShPtr<Constant> result;
-			if (Maybe<ConstIntPair> constIntPair = castConstPair<ConstInt>(
+			if (std::optional<ConstIntPair> constIntPair = castConstPair<ConstInt>(
 					constPair)) {
 				result = performOperationOverApInt(constIntPair,
 					&llvm::APInt::ashr);
@@ -731,7 +723,7 @@ void ArithmExprEvaluator::visit(ShPtr<BitShrOpExpr> expr) {
 			stackOfResults.push(result);
 		} else if (expr->isLogical()) {
 			ShPtr<Constant> result;
-			if (Maybe<ConstIntPair> constIntPair = castConstPair<ConstInt>(
+			if (std::optional<ConstIntPair> constIntPair = castConstPair<ConstInt>(
 					constPair)) {
 				result = performOperationOverApInt(constIntPair,
 					&llvm::APInt::lshr);
@@ -985,18 +977,18 @@ ArithmExprEvaluator::ConstPair ArithmExprEvaluator::
 *
 * @tparam ConstType Type of the constants after the cast.
 *
-* @return A pair of casted constants if the cast was correct, Nothing<>
+* @return A pair of casted constants if the cast was correct, @c std::nullopt
 *         otherwise.
 */
 template<typename ConstType>
-Maybe<std::pair<ShPtr<ConstType>, ShPtr<ConstType>>> ArithmExprEvaluator::
+std::optional<std::pair<ShPtr<ConstType>, ShPtr<ConstType>>> ArithmExprEvaluator::
 		castConstPair(const ConstPair &constPair) {
 	ShPtr<ConstType> firstConst(cast<ConstType>(constPair.first));
 	ShPtr<ConstType> secConst(cast<ConstType>(constPair.second));
 	if (!firstConst || !secConst) {
-		return Nothing<std::pair<ShPtr<ConstType>, ShPtr<ConstType>>>();
+		return std::nullopt;
 	} else {
-		return Just(std::make_pair(firstConst, secConst));
+		return std::make_pair(firstConst, secConst);
 	}
 }
 
@@ -1017,7 +1009,7 @@ Maybe<std::pair<ShPtr<ConstType>, ShPtr<ConstType>>> ArithmExprEvaluator::
 * @return Result of operation.
 */
 ShPtr<ConstInt> ArithmExprEvaluator::performOperationOverApInt(
-		const Maybe<ConstIntPair> &constIntPair, LLVMAPIntAPIntBoolOp op,
+		const std::optional<ConstIntPair> &constIntPair, LLVMAPIntAPIntBoolOp op,
 		bool &overflow) {
 	APSIntPair apsIntPair(getAPSIntsFromConstants(constIntPair));
 	return ConstInt::create((apsIntPair.first.*op)(apsIntPair.second,
@@ -1039,7 +1031,7 @@ ShPtr<ConstInt> ArithmExprEvaluator::performOperationOverApInt(
 * @return Result of operation.
 */
 ShPtr<ConstInt> ArithmExprEvaluator::performOperationOverApInt(
-		const Maybe<ConstIntPair> &constIntPair, LLVMAPIntAPIntOp op) {
+		const std::optional<ConstIntPair> &constIntPair, LLVMAPIntAPIntOp op) {
 	APSIntPair apsIntPair(getAPSIntsFromConstants(constIntPair));
 	return ConstInt::create((apsIntPair.first.*op)(apsIntPair.second),
 		apsIntPair.first.isSigned());
@@ -1060,7 +1052,7 @@ ShPtr<ConstInt> ArithmExprEvaluator::performOperationOverApInt(
 * @return Result of operation.
 */
 ShPtr<ConstBool> ArithmExprEvaluator::performOperationOverApInt(
-		const Maybe<ConstIntPair> &constIntPair, LLVMBoolAPIntOp op) {
+		const std::optional<ConstIntPair> &constIntPair, LLVMBoolAPIntOp op) {
 	APSIntPair apsIntPair(getAPSIntsFromConstants(constIntPair));
 	return ConstBool::create((apsIntPair.first.*op)(apsIntPair.second));
 }
@@ -1074,7 +1066,7 @@ ShPtr<ConstBool> ArithmExprEvaluator::performOperationOverApInt(
 * @return Result of operation.
 */
 llvm::APFloat::cmpResult ArithmExprEvaluator::performOperationOverApFloat(
-		const Maybe<ConstFloatPair> &constFloatPair) {
+		const std::optional<ConstFloatPair> &constFloatPair) {
 	APFloatPair apFloatPair(getAPFloatsFromConstants(constFloatPair));
 	return apFloatPair.first.compare(apFloatPair.second);
 }
@@ -1095,7 +1087,7 @@ llvm::APFloat::cmpResult ArithmExprEvaluator::performOperationOverApFloat(
 * @return Result of operation.
 */
 ShPtr<ConstFloat> ArithmExprEvaluator::performOperationOverApFloat(
-		const Maybe<ConstFloatPair> &constFloatPair, LLVMAPFloatOp op, llvm::
+		const std::optional<ConstFloatPair> &constFloatPair, LLVMAPFloatOp op, llvm::
 		APFloat::opStatus &status) {
 	APFloatPair apFloatPair(getAPFloatsFromConstants(constFloatPair));
 	status = ((apFloatPair.first).*op)(apFloatPair.second, llvm::APFloat::
@@ -1108,7 +1100,7 @@ ShPtr<ConstFloat> ArithmExprEvaluator::performOperationOverApFloat(
 *        no rounding mode.
 */
 ShPtr<ConstFloat> ArithmExprEvaluator::performOperationOverApFloat(
-		const Maybe<ConstFloatPair> &constFloatPair, LLVMAPFloatOpNoRounding op,
+		const std::optional<ConstFloatPair> &constFloatPair, LLVMAPFloatOpNoRounding op,
 		llvm::APFloat::opStatus &status) {
 	APFloatPair apFloatPair(getAPFloatsFromConstants(constFloatPair));
 	status = ((apFloatPair.first).*op)(apFloatPair.second);
@@ -1123,7 +1115,7 @@ ShPtr<ConstFloat> ArithmExprEvaluator::performOperationOverApFloat(
 * @return Created pair of @c llvm::APSInt.
 */
 ArithmExprEvaluator::APSIntPair ArithmExprEvaluator::getAPSIntsFromConstants(
-		const Maybe<ConstIntPair> &constIntPair) {
+		const std::optional<ConstIntPair> &constIntPair) {
 	return APSIntPair(constIntPair->first->getValue(),
 		constIntPair->second->getValue());
 }
@@ -1136,7 +1128,7 @@ ArithmExprEvaluator::APSIntPair ArithmExprEvaluator::getAPSIntsFromConstants(
 * @return Created pair of @c llvm::APFloat.
 */
 ArithmExprEvaluator::APFloatPair ArithmExprEvaluator::getAPFloatsFromConstants(
-		const Maybe<ConstFloatPair> &constFloatPair) {
+		const std::optional<ConstFloatPair> &constFloatPair) {
 	return APFloatPair(constFloatPair->first->getValue(),
 		constFloatPair->second->getValue());
 }
@@ -1168,3 +1160,4 @@ bool ArithmExprEvaluator::isConstantZero(ShPtr<Constant> constant) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

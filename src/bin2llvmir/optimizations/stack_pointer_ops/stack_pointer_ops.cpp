@@ -6,29 +6,28 @@
 
 #include <cassert>
 #include <iomanip>
-#include <iostream>
 
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
 
-#include "llvm-support/utils.h"
-#include "tl-cpputils/string.h"
-#include "bin2llvmir/optimizations/stack_pointer_ops/stack_pointer_ops.h"
-#include "bin2llvmir/utils/defs.h"
+#include "retdec/bin2llvmir/utils/llvm.h"
+#include "retdec/utils/string.h"
+#include "retdec/bin2llvmir/optimizations/stack_pointer_ops/stack_pointer_ops.h"
+#include "retdec/bin2llvmir/utils/debug.h"
 
-using namespace llvm_support;
-using namespace tl_cpputils;
+using namespace retdec::utils;
 using namespace llvm;
 
 #define debug_enabled false
 
+namespace retdec {
 namespace bin2llvmir {
 
 char StackPointerOpsRemove::ID = 0;
 
 static RegisterPass<StackPointerOpsRemove> X(
-		"stack-ptr-op-remove",
+		"retdec-stack-ptr-op-remove",
 		"Stack pointer operations optimization",
 		false, // Only looks at CFG
 		false // Analysis Pass
@@ -40,17 +39,17 @@ StackPointerOpsRemove::StackPointerOpsRemove() :
 
 }
 
-bool StackPointerOpsRemove::runOnModule(Module& M)
+bool StackPointerOpsRemove::runOnModule(Module& m)
 {
-	_module = &M;
-	_config = ConfigProvider::getConfig(&M);
+	_module = &m;
+	_abi = AbiProvider::getAbi(_module);
 	return run();
 }
 
-bool StackPointerOpsRemove::runOnModuleCustom(llvm::Module& M, Config* c)
+bool StackPointerOpsRemove::runOnModuleCustom(llvm::Module& m, Abi* a)
 {
-	_module = &M;
-	_config = c;
+	_module = &m;
+	_abi = a;
 	return run();
 }
 
@@ -69,9 +68,9 @@ bool StackPointerOpsRemove::run()
 
 bool StackPointerOpsRemove::removeStackPointerStores()
 {
-	if (_config == nullptr)
+	if (_abi == nullptr)
 	{
-		LOG << "[ABORT] config file is not available\n";
+		LOG << "[ABORT] ABI is not available\n";
 		return false;
 	}
 
@@ -92,7 +91,7 @@ bool StackPointerOpsRemove::removeStackPointerStores()
 			if (StoreInst* s = dyn_cast<StoreInst>(inst))
 			{
 				auto* reg = s->getPointerOperand();
-				if (!_config->isStackPointerRegister(reg))
+				if (!_abi->isStackPointerRegister(reg))
 				{
 					continue;
 				}
@@ -134,7 +133,8 @@ bool StackPointerOpsRemove::removePreservationStores()
 				{
 					auto* l = dyn_cast<LoadInst>(s->getValueOperand());
 					if (l && storedVal == nullptr
-							&& (l->getPointerOperand()->getName() == "ebp" || l->getPointerOperand()->getName() == "rbp"))
+							&& (_abi->isRegister(l->getPointerOperand(), X86_REG_EBP)
+							|| _abi->isRegister(l->getPointerOperand(), X86_REG_RBP)))
 					{
 						storedVal = l->getPointerOperand();
 						toRemove.insert(s);
@@ -155,7 +155,8 @@ bool StackPointerOpsRemove::removePreservationStores()
 					{
 						auto* s = dyn_cast<StoreInst>(uu);
 						if (s && storedVal == nullptr
-								&& (s->getPointerOperand()->getName() == "ebp" || s->getPointerOperand()->getName() == "rbp"))
+								&& (_abi->isRegister(s->getPointerOperand(), X86_REG_EBP)
+								|| _abi->isRegister(s->getPointerOperand(), X86_REG_RBP)))
 						{
 							storedVal = s->getPointerOperand();
 							toRemove.insert(s);
@@ -198,3 +199,4 @@ bool StackPointerOpsRemove::removePreservationStores()
 }
 
 } // namespace bin2llvmir
+} // namespace retdec

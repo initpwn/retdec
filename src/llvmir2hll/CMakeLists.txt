@@ -1,5 +1,5 @@
 
-set(LLVMIR2HLL_SOURCES
+add_library(llvmir2hll STATIC
 	analysis/alias_analysis/alias_analyses/basic_alias_analysis.cpp
 	analysis/alias_analysis/alias_analyses/simple_alias_analysis.cpp
 	analysis/alias_analysis/alias_analysis.cpp
@@ -27,13 +27,11 @@ set(LLVMIR2HLL_SOURCES
 	graphs/cfg/cfg_builders/non_recursive_cfg_builder.cpp
 	graphs/cfg/cfg_builders/recursive_cfg_builder.cpp
 	graphs/cfg/cfg_traversal.cpp
-	graphs/cfg/cfg_traversals/auxiliary_variables_cfg_traversal.cpp
 	graphs/cfg/cfg_traversals/lhs_rhs_uses_cfg_traversal.cpp
 	graphs/cfg/cfg_traversals/modified_before_read_cfg_traversal.cpp
 	graphs/cfg/cfg_traversals/no_var_def_cfg_traversal.cpp
 	graphs/cfg/cfg_traversals/nodes_of_var_use_cfg_traversal.cpp
 	graphs/cfg/cfg_traversals/optim_func_info_cfg_traversal.cpp
-	graphs/cfg/cfg_traversals/unneeded_global_vars_cfg_traversal.cpp
 	graphs/cfg/cfg_traversals/var_def_cfg_traversal.cpp
 	graphs/cfg/cfg_traversals/var_use_cfg_traversal.cpp
 	graphs/cfg/cfg_writer.cpp
@@ -42,17 +40,18 @@ set(LLVMIR2HLL_SOURCES
 	graphs/cg/cg_builder.cpp
 	graphs/cg/cg_writer.cpp
 	graphs/cg/cg_writers/graphviz_cg_writer.cpp
+	hll/bir_writer.cpp
 	hll/bracket_manager.cpp
 	hll/bracket_managers/c_bracket_manager.cpp
 	hll/bracket_managers/no_bracket_manager.cpp
-	hll/bracket_managers/py_bracket_manager.cpp
 	hll/compound_op_manager.cpp
 	hll/compound_op_managers/c_compound_op_manager.cpp
 	hll/compound_op_managers/no_compound_op_manager.cpp
-	hll/compound_op_managers/py_compound_op_manager.cpp
 	hll/hll_writer.cpp
 	hll/hll_writers/c_hll_writer.cpp
-	hll/hll_writers/py_hll_writer.cpp
+	hll/output_manager.cpp
+	hll/output_managers/json_manager.cpp
+	hll/output_managers/plain_manager.cpp
 	ir/add_op_expr.cpp
 	ir/address_op_expr.cpp
 	ir/and_op_expr.cpp
@@ -80,7 +79,6 @@ set(LLVMIR2HLL_SOURCES
 	ir/const_string.cpp
 	ir/const_struct.cpp
 	ir/const_symbol.cpp
-	ir/constant.cpp
 	ir/continue_stmt.cpp
 	ir/deref_op_expr.cpp
 	ir/div_op_expr.cpp
@@ -122,7 +120,6 @@ set(LLVMIR2HLL_SOURCES
 	ir/switch_stmt.cpp
 	ir/ternary_op_expr.cpp
 	ir/trunc_cast_expr.cpp
-	ir/type.cpp
 	ir/ufor_loop_stmt.cpp
 	ir/unary_op_expr.cpp
 	ir/unknown_type.cpp
@@ -136,21 +133,16 @@ set(LLVMIR2HLL_SOURCES
 	llvm/llvm_intrinsic_converter.cpp
 	llvm/llvm_support.cpp
 	llvm/llvmir2bir_converter.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter/basic_block_converter.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter/cfg_node.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter/llvm_constant_converter.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter/llvm_fcmp_converter.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter/llvm_instruction_converter.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter/llvm_type_converter.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter/llvm_value_converter.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter/structure_converter.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter/variables_manager.cpp
-	llvm/llvmir2bir_converters/orig_llvmir2bir_converter.cpp
-	llvm/llvmir2bir_converters/orig_llvmir2bir_converter/labels_handler.cpp
-	llvm/llvmir2bir_converters/orig_llvmir2bir_converter/llvm_branch_info.cpp
-	llvm/llvmir2bir_converters/orig_llvmir2bir_converter/llvm_converter.cpp
-	llvm/llvmir2bir_converters/orig_llvmir2bir_converter/vars_handler.cpp
+	llvm/llvmir2bir_converter/basic_block_converter.cpp
+	llvm/llvmir2bir_converter/cfg_node.cpp
+	llvm/llvmir2bir_converter/labels_handler.cpp
+	llvm/llvmir2bir_converter/llvm_constant_converter.cpp
+	llvm/llvmir2bir_converter/llvm_fcmp_converter.cpp
+	llvm/llvmir2bir_converter/llvm_instruction_converter.cpp
+	llvm/llvmir2bir_converter/llvm_type_converter.cpp
+	llvm/llvmir2bir_converter/llvm_value_converter.cpp
+	llvm/llvmir2bir_converter/structure_converter.cpp
+	llvm/llvmir2bir_converter/variables_manager.cpp
 	llvm/string_conversions.cpp
 	obtainer/call_info_obtainer.cpp
 	obtainer/call_info_obtainers/optim_call_info_obtainer.cpp
@@ -162,7 +154,6 @@ set(LLVMIR2HLL_SOURCES
 	optimizer/optimizer_manager.cpp
 	optimizer/optimizers/aggressive_deref_optimizer.cpp
 	optimizer/optimizers/aggressive_global_to_local_optimizer.cpp
-	optimizer/optimizers/auxiliary_variables_optimizer.cpp
 	optimizer/optimizers/bit_op_to_log_op_optimizer.cpp
 	optimizer/optimizers/bit_shift_optimizer.cpp
 	optimizer/optimizers/break_continue_return_optimizer.cpp
@@ -170,13 +161,12 @@ set(LLVMIR2HLL_SOURCES
 	optimizer/optimizers/c_cast_optimizer.cpp
 	optimizer/optimizers/copy_propagation_optimizer.cpp
 	optimizer/optimizers/dead_code_optimizer.cpp
-	optimizer/optimizers/dead_global_assign_optimizer.cpp
 	optimizer/optimizers/dead_local_assign_optimizer.cpp
 	optimizer/optimizers/deref_address_optimizer.cpp
 	optimizer/optimizers/deref_to_array_index_optimizer.cpp
 	optimizer/optimizers/empty_array_to_string_optimizer.cpp
 	optimizer/optimizers/empty_stmt_optimizer.cpp
-	optimizer/optimizers/global_to_local_optimizer.cpp
+	optimizer/optimizers/goto_stmt_optimizer.cpp
 	optimizer/optimizers/if_before_loop_optimizer.cpp
 	optimizer/optimizers/if_structure_optimizer.cpp
 	optimizer/optimizers/if_to_switch_optimizer.cpp
@@ -200,7 +190,6 @@ set(LLVMIR2HLL_SOURCES
 	optimizer/optimizers/simplify_arithm_expr/three_operands_sub_optimizer.cpp
 	optimizer/optimizers/simplify_arithm_expr/zero_sub_optimizer.cpp
 	optimizer/optimizers/simplify_arithm_expr_optimizer.cpp
-	optimizer/optimizers/unreachable_code_optimizer.cpp
 	optimizer/optimizers/unused_global_var_optimizer.cpp
 	optimizer/optimizers/var_def_for_loop_optimizer.cpp
 	optimizer/optimizers/var_def_stmt_optimizer.cpp
@@ -208,7 +197,6 @@ set(LLVMIR2HLL_SOURCES
 	optimizer/optimizers/while_true_to_for_loop_optimizer.cpp
 	optimizer/optimizers/while_true_to_ufor_loop_optimizer.cpp
 	optimizer/optimizers/while_true_to_while_cond_optimizer.cpp
-	pattern/pattern.cpp
 	pattern/pattern_finder.cpp
 	pattern/pattern_finder_runner.cpp
 	pattern/pattern_finder_runners/cli_pattern_finder_runner.cpp
@@ -222,7 +210,6 @@ set(LLVMIR2HLL_SOURCES
 	pattern/pattern_finders/api_call_pattern_finder.cpp
 	pattern/pattern_finders/api_call_seq_pattern_finder.cpp
 	pattern/patterns/stmts_pattern.cpp
-	semantics/semantics.cpp
 	semantics/semantics/compound_semantics.cpp
 	semantics/semantics/compound_semantics_builder.cpp
 	semantics/semantics/default_semantics.cpp
@@ -278,7 +265,6 @@ set(LLVMIR2HLL_SOURCES
 	support/const_symbol_converter.cpp
 	support/expr_types_fixer.cpp
 	support/expression_negater.cpp
-	support/funcs_with_prefix_remover.cpp
 	support/global_vars_sorter.cpp
 	support/headers_for_declared_funcs.cpp
 	support/library_funcs_remover.cpp
@@ -286,11 +272,9 @@ set(LLVMIR2HLL_SOURCES
 	support/struct_types_sorter.cpp
 	support/types.cpp
 	support/unreachable_code_in_cfg_remover.cpp
-	support/unreachable_funcs_remover.cpp
 	support/valid_state.cpp
 	support/value_text_repr_visitor.cpp
 	support/variable_replacer.cpp
-	support/visitor.cpp
 	support/visitors/ordered_all_visitor.cpp
 	utils/graphviz.cpp
 	utils/ir.cpp
@@ -310,34 +294,25 @@ set(LLVMIR2HLL_SOURCES
 	var_renamer/var_renamers/readable_var_renamer.cpp
 	var_renamer/var_renamers/simple_var_renamer.cpp
 	var_renamer/var_renamers/unified_var_renamer.cpp
+	llvmir2hll.cpp
+)
+add_library(retdec::llvmir2hll ALIAS llvmir2hll)
+
+target_compile_features(llvmir2hll PUBLIC cxx_std_17)
+
+target_include_directories(llvmir2hll
+	PUBLIC
+		$<BUILD_INTERFACE:${RETDEC_INCLUDE_DIR}>
+		$<INSTALL_INTERFACE:${RETDEC_INSTALL_INCLUDE_DIR}>
 )
 
-# Build of the original LLVMIR2BIR converter fails on GCC 6.1 with the
-# following internal error:
-#
-#    from orig_llvmir2bir_converter.cpp:57:
-#      include/llvm/IR/InstVisitor.h: In member function llvm::InstVisitor::visitInvokeInst(...):
-#      include/llvm/IR/InstVisitor.h:244:7: internal compiler error: in assign_temp, at function.c:961
-#    DELEGATE(Instruction);
-#    ^
-#
-# It seems to be related to the following bug report:
-#
-#    https://gcc.gnu.org/bugzilla/show_bug.cgi?id=69241
-#
-# Although the bug report says that this issue has already been fixed, GCC
-# 6.1.1 still fails (checked on 2016-05-03). A suggested workaround is to
-# use -O1 instead of -O2 when building with GCC >= 6.1.
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 6)
-	set_source_files_properties(
-		"${CMAKE_CURRENT_SOURCE_DIR}/llvm/llvmir2bir_converters/orig_llvmir2bir_converter.cpp"
-		PROPERTIES COMPILE_FLAGS "-O1"
-	)
-endif()
-
-add_library(llvmir2hll STATIC ${LLVMIR2HLL_SOURCES})
-target_link_libraries(llvmir2hll retdec-config tl-cpputils llvm-support llvm)
-target_include_directories(llvmir2hll PUBLIC ${PROJECT_SOURCE_DIR}/include/)
+target_link_libraries(llvmir2hll
+	PUBLIC
+		retdec::config
+		retdec::utils
+		retdec::deps::rapidjson
+		retdec::deps::llvm
+)
 
 # We need to compile source files with /bigobj to prevent the following
 # kind of an error:
@@ -345,5 +320,43 @@ target_include_directories(llvmir2hll PUBLIC ${PROJECT_SOURCE_DIR}/include/)
 #   fatal error C1128: number of sections exceeded object file format
 #                      limit: compile with /bigobj
 if(MSVC)
-	SET_TARGET_PROPERTIES(llvmir2hll PROPERTIES COMPILE_FLAGS "/bigobj")
+	target_compile_options(llvmir2hll PUBLIC "/bigobj")
 endif()
+
+set_target_properties(llvmir2hll
+	PROPERTIES
+		OUTPUT_NAME "retdec-llvmir2hll"
+)
+
+# Install includes.
+install(
+	DIRECTORY ${RETDEC_INCLUDE_DIR}/retdec/llvmir2hll
+	DESTINATION ${RETDEC_INSTALL_INCLUDE_DIR}/retdec
+)
+
+# Install libs.
+install(TARGETS llvmir2hll
+	EXPORT llvmir2hll-targets
+	ARCHIVE DESTINATION ${RETDEC_INSTALL_LIB_DIR}
+	LIBRARY DESTINATION ${RETDEC_INSTALL_LIB_DIR}
+)
+
+# Export targets.
+install(EXPORT llvmir2hll-targets
+	FILE "retdec-llvmir2hll-targets.cmake"
+	NAMESPACE retdec::
+	DESTINATION ${RETDEC_INSTALL_CMAKE_DIR}
+)
+
+# Install CMake files.
+configure_file(
+	"retdec-llvmir2hll-config.cmake"
+	"${CMAKE_CURRENT_BINARY_DIR}/retdec-llvmir2hll-config.cmake"
+	@ONLY
+)
+install(
+	FILES
+		"${CMAKE_CURRENT_BINARY_DIR}/retdec-llvmir2hll-config.cmake"
+	DESTINATION
+		"${RETDEC_INSTALL_CMAKE_DIR}"
+)

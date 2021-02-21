@@ -6,23 +6,23 @@
 
 #include <cctype>
 
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/global_var_def.h"
-#include "llvmir2hll/ir/module.h"
-#include "llvmir2hll/ir/statement.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/types.h"
-#include "llvmir2hll/utils/ir.h"
-#include "llvmir2hll/utils/string.h"
-#include "llvmir2hll/var_renamer/var_renamer.h"
-#include "tl-cpputils/container.h"
-#include "tl-cpputils/conversion.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/global_var_def.h"
+#include "retdec/llvmir2hll/ir/module.h"
+#include "retdec/llvmir2hll/ir/statement.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/types.h"
+#include "retdec/llvmir2hll/utils/ir.h"
+#include "retdec/llvmir2hll/utils/string.h"
+#include "retdec/llvmir2hll/var_renamer/var_renamer.h"
+#include "retdec/utils/container.h"
+#include "retdec/utils/conversion.h"
 
-using tl_cpputils::hasItem;
-using tl_cpputils::mapGetValueOrDefault;
-using tl_cpputils::toString;
+using retdec::utils::hasItem;
+using retdec::utils::mapGetValueOrDefault;
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -41,11 +41,6 @@ VarRenamer::VarRenamer(ShPtr<VarNameGen> varNameGen, bool useDebugNames):
 	currFunc() {
 		PRECONDITION_NON_NULL(varNameGen);
 	}
-
-/**
-* @brief Destructor.
-*/
-VarRenamer::~VarRenamer() {}
 
 /**
 * @brief Renames variables in the given module according to the settings set
@@ -283,7 +278,7 @@ std::string VarRenamer::generateUniqueName(ShPtr<Variable> var,
 		// The name does not end with a number -> append numbers.
 		unsigned varNum = 2;
 		do {
-			newName = name + toString(varNum++);
+			newName = name + std::to_string(varNum++);
 		} while (nameExists(newName, func));
 	}
 	return newName;
@@ -493,3 +488,4 @@ void VarRenamer::visit(ShPtr<Variable> var) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

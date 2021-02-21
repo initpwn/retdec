@@ -4,12 +4,13 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/const_int.h"
-#include "llvmir2hll/ir/const_struct.h"
-#include "llvmir2hll/ir/struct_type.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/const_int.h"
+#include "retdec/llvmir2hll/ir/const_struct.h"
+#include "retdec/llvmir2hll/ir/struct_type.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -19,11 +20,6 @@ namespace llvmir2hll {
 */
 ConstStruct::ConstStruct(Type value, ShPtr<StructType> type):
 	Constant(), value(value), type(type) {}
-
-/**
-* @brief Destructs the constant.
-*/
-ConstStruct::~ConstStruct() {}
 
 ShPtr<Value> ConstStruct::clone() {
 	// Clone all struct members.
@@ -143,3 +139,4 @@ void ConstStruct::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

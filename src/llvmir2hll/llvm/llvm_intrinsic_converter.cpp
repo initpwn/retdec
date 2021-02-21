@@ -6,19 +6,20 @@
 
 #include <string>
 
-#include "llvmir2hll/ir/call_expr.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/module.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/llvm/llvm_intrinsic_converter.h"
-#include "llvmir2hll/support/debug.h"
-#include "tl-cpputils/container.h"
-#include "tl-cpputils/string.h"
+#include "retdec/llvmir2hll/ir/call_expr.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/module.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/llvm/llvm_intrinsic_converter.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/utils/container.h"
+#include "retdec/utils/string.h"
 
-using tl_cpputils::endsWith;
-using tl_cpputils::hasItem;
-using tl_cpputils::startsWith;
+using retdec::utils::endsWith;
+using retdec::utils::hasItem;
+using retdec::utils::startsWith;
 
+namespace retdec {
 namespace llvmir2hll {
 
 namespace {
@@ -54,11 +55,6 @@ std::string getTypeAwareNameFor(ShPtr<Function> func, const std::string &baseNam
 */
 LLVMIntrinsicConverter::LLVMIntrinsicConverter(ShPtr<Module> module):
 	OrderedAllVisitor(), module(module), renamedFuncNames() {}
-
-/**
-* @brief Destructs the converter.
-*/
-LLVMIntrinsicConverter::~LLVMIntrinsicConverter() {}
 
 /**
 * @brief Converts LLVM intrinsic functions in @a module into standard-C-library
@@ -173,6 +169,10 @@ void LLVMIntrinsicConverter::convertIntrinsicFuncName(ShPtr<Function> func) {
 	else if (startsWith(funcName, "llvm.trap")) {
 		renameIntrinsicFunc(func, "abort");
 	}
+	// llvm.copysign
+	else if (startsWith(funcName, "llvm.copysign")) {
+		renameFloatIntrinsicFunc(func, "copysign");
+	}
 }
 
 /**
@@ -259,3 +259,4 @@ void LLVMIntrinsicConverter::visit(ShPtr<CallExpr> expr) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

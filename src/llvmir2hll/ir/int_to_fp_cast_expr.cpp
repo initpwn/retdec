@@ -4,10 +4,11 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/int_to_fp_cast_expr.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/int_to_fp_cast_expr.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -18,13 +19,6 @@ namespace llvmir2hll {
 IntToFPCastExpr::IntToFPCastExpr(ShPtr<Expression> op, ShPtr<Type> dstType,
 		Variant variant):
 	CastExpr(op, dstType), variant(variant) {}
-
-/**
-* @brief Destructs the operator.
-*/
-IntToFPCastExpr::~IntToFPCastExpr() {
-	// Observers are removed in the superclass.
-}
 
 bool IntToFPCastExpr::isEqualTo(ShPtr<Value> otherValue) const {
 	// Both types and values of all operands have to be equal.
@@ -81,3 +75,4 @@ void IntToFPCastExpr::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

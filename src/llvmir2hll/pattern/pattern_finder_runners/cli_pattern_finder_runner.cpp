@@ -6,13 +6,13 @@
 
 #include <string>
 
-#include "llvmir2hll/ir/statement.h"
-#include "llvmir2hll/pattern/pattern_finder_runners/cli_pattern_finder_runner.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvm-support/diagnostics.h"
+#include "retdec/llvmir2hll/ir/statement.h"
+#include "retdec/llvmir2hll/pattern/pattern_finder_runners/cli_pattern_finder_runner.h"
+#include "retdec/llvmir2hll/support/debug.h"
 
-using namespace llvm_support;
+using namespace retdec::utils::io;
 
+namespace retdec {
 namespace llvmir2hll {
 
 namespace {
@@ -27,13 +27,8 @@ const std::string PATTERN_INFO_INDENT = "      ";
 *
 * @param[out] os Output stream, into which the patterns will be emited.
 */
-CLIPatternFinderRunner::CLIPatternFinderRunner(llvm::raw_ostream &os):
+CLIPatternFinderRunner::CLIPatternFinderRunner(utils::io::Logger &os):
 	os(os) {}
-
-/**
-* @brief Destructs the finder.
-*/
-CLIPatternFinderRunner::~CLIPatternFinderRunner() {}
 
 /**
 * @brief Prints a sub-phase saying that the given finder is run.
@@ -42,7 +37,7 @@ CLIPatternFinderRunner::~CLIPatternFinderRunner() {}
 */
 void CLIPatternFinderRunner::doActionsBeforePatternFinderRuns(
 		ShPtr<PatternFinder> pf) {
-	printSubPhase("running " + pf->getId() + "PatternFinder", os);
+	os << "running " + pf->getId() + "PatternFinder";
 }
 
 /**
@@ -59,8 +54,12 @@ void CLIPatternFinderRunner::doActionsAfterPatternFinderHasRun(
 * @brief Prints information about the given pattern.
 */
 void CLIPatternFinderRunner::printPatternInfo(const ShPtr<Pattern> &p) {
-	os << PATTERN_INFO_INDENT << "Found pattern:" << "\n";
-	p->print(os, PATTERN_INFO_INDENT + "  ");
+	os << PATTERN_INFO_INDENT << "Found pattern:" << std::endl;
+	std::string str;
+	llvm::raw_string_ostream ss(str);
+	p->print(ss);
+	os << PATTERN_INFO_INDENT << "  " << str;
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

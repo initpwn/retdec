@@ -9,8 +9,9 @@
 
 #include <gmock/gmock.h>
 
-#include "llvmir2hll/config/config.h"
+#include "retdec/llvmir2hll/config/config.h"
 
+namespace retdec {
 namespace llvmir2hll {
 namespace tests {
 
@@ -24,10 +25,12 @@ public:
 	MOCK_CONST_METHOD1(isGlobalVarStoringWideString, bool (const std::string &));
 	MOCK_CONST_METHOD2(comesFromGlobalVar, std::string (const std::string &, const std::string &));
 	MOCK_CONST_METHOD1(getRegisterForGlobalVar, std::string (const std::string &));
+	MOCK_CONST_METHOD1(getAddressForGlobalVar, Address (const std::string &));
 	MOCK_CONST_METHOD1(getDetectedCryptoPatternForGlobalVar, std::string (const std::string &));
 	MOCK_CONST_METHOD1(getAddressRangeForFunc, AddressRange (const std::string &));
 	MOCK_CONST_METHOD1(getLineRangeForFunc, LineRange (const std::string &));
 	MOCK_CONST_METHOD1(isUserDefinedFunc, bool (const std::string &));
+	MOCK_CONST_METHOD1(isDecompilerDefinedFunc, bool (const std::string &));
 	MOCK_CONST_METHOD1(isStaticallyLinkedFunc, bool (const std::string &));
 	MOCK_CONST_METHOD1(isDynamicallyLinkedFunc, bool (const std::string &));
 	MOCK_CONST_METHOD1(isSyscallFunc, bool (const std::string &));
@@ -40,7 +43,6 @@ public:
 	MOCK_CONST_METHOD1(getDetectedCryptoPatternsForFunc, StringSet (const std::string &));
 	MOCK_CONST_METHOD1(getWrappedFunc, std::string (const std::string &));
 	MOCK_CONST_METHOD1(getDemangledNameOfFunc, std::string (const std::string &));
-	MOCK_CONST_METHOD0(getFuncsFixedWithLLVMIRFixer, StringSet ());
 	MOCK_CONST_METHOD0(getClassNames, StringSet ());
 	MOCK_CONST_METHOD1(getClassForFunc, std::string (const std::string &));
 	MOCK_CONST_METHOD2(getTypeOfFuncInClass, std::string (const std::string &, const std::string &));
@@ -52,17 +54,15 @@ public:
 	MOCK_CONST_METHOD1(getDebugNameForGlobalVar, std::string (const std::string &));
 	MOCK_CONST_METHOD2(getDebugNameForLocalVar, std::string (const std::string &,
 		const std::string &));
-	MOCK_CONST_METHOD0(getPrefixesOfFuncsToBeRemoved, StringSet ());
-	MOCK_CONST_METHOD0(getFrontendRelease, std::string ());
 	MOCK_CONST_METHOD0(getNumberOfFuncsDetectedInFrontend, std::size_t ());
 	MOCK_CONST_METHOD0(getDetectedCompilerOrPacker, std::string ());
 	MOCK_CONST_METHOD0(getDetectedLanguage, std::string ());
 	MOCK_CONST_METHOD0(getSelectedButNotFoundFuncs, StringSet ());
-	MOCK_CONST_METHOD0(getOptsRunInFrontend, StringSet ());
 };
 
 } // namespace tests
 } // namespace llvmir2hll
+} // namespace retdec
 
 /**
 * @brief Instantiates ConfigMock with the given name.

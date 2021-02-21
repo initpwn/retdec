@@ -4,13 +4,14 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/const_array.h"
-#include "llvmir2hll/ir/const_string.h"
-#include "llvmir2hll/ir/global_var_def.h"
-#include "llvmir2hll/ir/module.h"
-#include "llvmir2hll/optimizer/optimizers/empty_array_to_string_optimizer.h"
-#include "llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/ir/const_array.h"
+#include "retdec/llvmir2hll/ir/const_string.h"
+#include "retdec/llvmir2hll/ir/global_var_def.h"
+#include "retdec/llvmir2hll/ir/module.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/empty_array_to_string_optimizer.h"
+#include "retdec/llvmir2hll/support/debug.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -25,11 +26,6 @@ EmptyArrayToStringOptimizer::EmptyArrayToStringOptimizer(ShPtr<Module> module):
 	Optimizer(module) {
 		PRECONDITION_NON_NULL(module);
 	}
-
-/**
-* @brief Destructs the optimizer.
-*/
-EmptyArrayToStringOptimizer::~EmptyArrayToStringOptimizer() {}
 
 void EmptyArrayToStringOptimizer::doOptimization() {
 	// For each global variable in the module...
@@ -92,3 +88,4 @@ bool EmptyArrayToStringOptimizer::isEmptyArray(ShPtr<Expression> expr) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

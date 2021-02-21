@@ -4,9 +4,10 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/var_name_gen/var_name_gen.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/var_name_gen/var_name_gen.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -18,11 +19,6 @@ VarNameGen::VarNameGen(std::string prefix):
 		prefix(prefix) {}
 
 /**
-* @brief Destructor.
-*/
-VarNameGen::~VarNameGen() {}
-
-/**
 * @brief Returns the prefix used by the generator.
 */
 const std::string &VarNameGen::getPrefix() const {
@@ -30,3 +26,4 @@ const std::string &VarNameGen::getPrefix() const {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

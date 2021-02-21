@@ -4,12 +4,15 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
+#include <optional>
+
 #include <gtest/gtest.h>
 
-#include "llvmir2hll/pattern/pattern_finders/api_call/api_call_info_seq_parser.h"
+#include "retdec/llvmir2hll/pattern/pattern_finders/api_call/api_call_info_seq_parser.h"
 
 using namespace ::testing;
 
+namespace retdec {
 namespace llvmir2hll {
 namespace tests {
 
@@ -29,14 +32,14 @@ protected:
 
 TEST_F(APICallInfoSeqParserTests,
 ParseOfEmptyStringReturnsEmptySequence) {
-	Maybe<APICallInfoSeq> seq(parser->parse(""));
+	std::optional<APICallInfoSeq> seq(parser->parse(""));
 	ASSERT_TRUE(seq);
 	EXPECT_TRUE(seq->empty());
 }
 
 TEST_F(APICallInfoSeqParserTests,
 ParseOfSingleInfoWithNoBindsReturnsCorrectResult) {
-	Maybe<APICallInfoSeq> seq(parser->parse("test()"));
+	std::optional<APICallInfoSeq> seq(parser->parse("test()"));
 	ASSERT_TRUE(seq);
 	ASSERT_EQ(1, seq->size());
 	const APICallInfo &info(seq->front());
@@ -45,7 +48,7 @@ ParseOfSingleInfoWithNoBindsReturnsCorrectResult) {
 
 TEST_F(APICallInfoSeqParserTests,
 ParseOfSingleInfoWithBindToTheOnlyParameterReturnsCorrectResult) {
-	Maybe<APICallInfoSeq> seq(parser->parse("test(X)"));
+	std::optional<APICallInfoSeq> seq(parser->parse("test(X)"));
 	ASSERT_TRUE(seq);
 	ASSERT_EQ(1, seq->size());
 	const APICallInfo &info(seq->front());
@@ -56,7 +59,7 @@ ParseOfSingleInfoWithBindToTheOnlyParameterReturnsCorrectResult) {
 
 TEST_F(APICallInfoSeqParserTests,
 ParseOfSingleInfoWithBindToReturnValueAndOnlyParameterReturnsCorrectResult) {
-	Maybe<APICallInfoSeq> seq(parser->parse("X = test(Y)"));
+	std::optional<APICallInfoSeq> seq(parser->parse("X = test(Y)"));
 	ASSERT_TRUE(seq);
 	ASSERT_EQ(1, seq->size());
 	const APICallInfo &info(seq->front());
@@ -69,7 +72,7 @@ ParseOfSingleInfoWithBindToReturnValueAndOnlyParameterReturnsCorrectResult) {
 
 TEST_F(APICallInfoSeqParserTests,
 ParseOfSingleInfoWithBindToReturnValueAndTwoParametersReturnsCorrectResult) {
-	Maybe<APICallInfoSeq> seq(parser->parse("X = test(Y, Z)"));
+	std::optional<APICallInfoSeq> seq(parser->parse("X = test(Y, Z)"));
 	ASSERT_TRUE(seq);
 	ASSERT_EQ(1, seq->size());
 	const APICallInfo &info(seq->front());
@@ -84,7 +87,7 @@ ParseOfSingleInfoWithBindToReturnValueAndTwoParametersReturnsCorrectResult) {
 
 TEST_F(APICallInfoSeqParserTests,
 ParseOfSingleInfoWithBindToReturnValueAndThreeParametersReturnsCorrectResult) {
-	Maybe<APICallInfoSeq> seq(parser->parse("X = test(Y, Z, W)"));
+	std::optional<APICallInfoSeq> seq(parser->parse("X = test(Y, Z, W)"));
 	ASSERT_TRUE(seq);
 	ASSERT_EQ(1, seq->size());
 	const APICallInfo &info(seq->front());
@@ -101,7 +104,7 @@ ParseOfSingleInfoWithBindToReturnValueAndThreeParametersReturnsCorrectResult) {
 
 TEST_F(APICallInfoSeqParserTests,
 ParseOfSingleInfoWithBindAndUnderscoreReturnsCorrectResult) {
-	Maybe<APICallInfoSeq> seq(parser->parse("test(X, _)"));
+	std::optional<APICallInfoSeq> seq(parser->parse("test(X, _)"));
 	ASSERT_TRUE(seq);
 	ASSERT_EQ(1, seq->size());
 	const APICallInfo &info(seq->front());
@@ -113,7 +116,7 @@ ParseOfSingleInfoWithBindAndUnderscoreReturnsCorrectResult) {
 
 TEST_F(APICallInfoSeqParserTests,
 ParseOfSingleInfoWithUnderscoreAndBindReturnsCorrectResult) {
-	Maybe<APICallInfoSeq> seq(parser->parse("test(_, X)"));
+	std::optional<APICallInfoSeq> seq(parser->parse("test(_, X)"));
 	ASSERT_TRUE(seq);
 	ASSERT_EQ(1, seq->size());
 	const APICallInfo &info(seq->front());
@@ -125,7 +128,7 @@ ParseOfSingleInfoWithUnderscoreAndBindReturnsCorrectResult) {
 
 TEST_F(APICallInfoSeqParserTests,
 ParseOfSingleInfoWithJustUnderscoresReturnsCorrectResult) {
-	Maybe<APICallInfoSeq> seq(parser->parse("test(_, _, _)"));
+	std::optional<APICallInfoSeq> seq(parser->parse("test(_, _, _)"));
 	ASSERT_TRUE(seq);
 	ASSERT_EQ(1, seq->size());
 	const APICallInfo &info(seq->front());
@@ -137,7 +140,7 @@ ParseOfSingleInfoWithJustUnderscoresReturnsCorrectResult) {
 
 TEST_F(APICallInfoSeqParserTests,
 ParseOfTwoInfosWithNoBindsReturnsCorrectResult) {
-	Maybe<APICallInfoSeq> seq(parser->parse("test1()\ntest2()"));
+	std::optional<APICallInfoSeq> seq(parser->parse("test1()\ntest2()"));
 	ASSERT_TRUE(seq);
 	ASSERT_EQ(2, seq->size());
 	const APICallInfo &info1(seq->front());
@@ -148,7 +151,7 @@ ParseOfTwoInfosWithNoBindsReturnsCorrectResult) {
 
 TEST_F(APICallInfoSeqParserTests,
 ParseOfThreeInfosWithManyBindsReturnsCorrectResult) {
-	Maybe<APICallInfoSeq> seq(parser->parse(
+	std::optional<APICallInfoSeq> seq(parser->parse(
 		"X = test1()\n"
 		"test2(X, _)\n"
 		"test3(X)\n"
@@ -174,7 +177,7 @@ ParseOfThreeInfosWithManyBindsReturnsCorrectResult) {
 
 TEST_F(APICallInfoSeqParserTests,
 ParseOfSingleInfoWithMulticharacterBindsReturnsCorrectResult) {
-	Maybe<APICallInfoSeq> seq(parser->parse("012 = MyFunc99(Y2abc)"));
+	std::optional<APICallInfoSeq> seq(parser->parse("012 = MyFunc99(Y2abc)"));
 	ASSERT_TRUE(seq);
 	ASSERT_EQ(1, seq->size());
 	const APICallInfo &info(seq->front());
@@ -187,14 +190,14 @@ ParseOfSingleInfoWithMulticharacterBindsReturnsCorrectResult) {
 
 TEST_F(APICallInfoSeqParserTests,
 WhitespaceDoesNotMatter) {
-	Maybe<APICallInfoSeq> seq(parser->parse("\v\nX   =  \t test (\n\r\n)   "));
+	std::optional<APICallInfoSeq> seq(parser->parse("\v\nX   =  \t test (\n\r\n)   "));
 	ASSERT_TRUE(seq);
 	ASSERT_EQ(1, seq->size());
 }
 
 TEST_F(APICallInfoSeqParserTests,
 IdsCanHaveUnderscoresInTheirNames) {
-	Maybe<APICallInfoSeq> seq(parser->parse("_te__st(_X, _, _Y)"));
+	std::optional<APICallInfoSeq> seq(parser->parse("_te__st(_X, _, _Y)"));
 	ASSERT_TRUE(seq);
 	ASSERT_EQ(1, seq->size());
 	const APICallInfo &info(seq->front());
@@ -208,7 +211,7 @@ IdsCanHaveUnderscoresInTheirNames) {
 
 TEST_F(APICallInfoSeqParserTests,
 ThereDoesNotNeedToBeSpaceToSeparateTwoInfos) {
-	Maybe<APICallInfoSeq> seq(parser->parse("test1()test2()"));
+	std::optional<APICallInfoSeq> seq(parser->parse("test1()test2()"));
 	ASSERT_TRUE(seq);
 	ASSERT_EQ(2, seq->size());
 	const APICallInfo &info1(seq->front());
@@ -219,7 +222,7 @@ ThereDoesNotNeedToBeSpaceToSeparateTwoInfos) {
 
 TEST_F(APICallInfoSeqParserTests,
 SemicolonCanBeOptionallyUsedAsEndOfInfos) {
-	Maybe<APICallInfoSeq> seq(parser->parse("test1();test2();"));
+	std::optional<APICallInfoSeq> seq(parser->parse("test1();test2();"));
 	ASSERT_TRUE(seq);
 	ASSERT_EQ(2, seq->size());
 	const APICallInfo &info1(seq->front());
@@ -255,3 +258,4 @@ ParseOfInvalidRepresentationReturnsNothing) {
 
 } // namespace tests
 } // namespace llvmir2hll
+} // namespace retdec

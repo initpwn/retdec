@@ -4,12 +4,11 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/graphs/cfg/cfg_writer.h"
-#include "llvmir2hll/support/debug.h"
-#include "tl-cpputils/conversion.h"
+#include "retdec/llvmir2hll/graphs/cfg/cfg_writer.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/utils/conversion.h"
 
-using tl_cpputils::toString;
-
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -21,9 +20,5 @@ namespace llvmir2hll {
 CFGWriter::CFGWriter(ShPtr<CFG> cfg, std::ostream &out):
 	cfg(cfg), out(out) {}
 
-/**
-* @brief Destructs the writer.
-*/
-CFGWriter::~CFGWriter() {}
-
 } // namespace llvmir2hll
+} // namespace retdec

@@ -6,15 +6,16 @@
 
 #include <gtest/gtest.h>
 
-#include "llvmir2hll/ir/empty_stmt.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/int_type.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/ir/void_type.h"
+#include "retdec/llvmir2hll/ir/empty_stmt.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/int_type.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/ir/void_type.h"
 #include "llvmir2hll/support/observer_mock.h"
 
 using namespace ::testing;
 
+namespace retdec {
 namespace llvmir2hll {
 namespace tests {
 
@@ -29,14 +30,14 @@ namespace {
 * @brief Returns a new function declaration.
 */
 ShPtr<Function> getFuncDeclaration(const std::string &name = "func") {
-	return Function::create(VoidType::create(), name, VarVector());
+	return Function::create(nullptr, VoidType::create(), name, VarVector());
 }
 
 /**
 * @brief Returns a new function definition.
 */
 ShPtr<Function> getFuncDefinition(const std::string &name = "func") {
-	return Function::create(VoidType::create(), name,
+	return Function::create(nullptr, VoidType::create(), name,
 		VarVector(), VarSet(), EmptyStmt::create());
 }
 
@@ -225,3 +226,4 @@ ConvertToDeclarationDoesNotNotifyObserversWhenItWasDeclaration) {
 
 } // namespace tests
 } // namespace llvmir2hll
+} // namespace retdec

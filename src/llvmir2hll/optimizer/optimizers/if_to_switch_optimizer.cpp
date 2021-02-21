@@ -4,20 +4,21 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/analysis/break_in_if_analysis.h"
-#include "llvmir2hll/analysis/value_analysis.h"
-#include "llvmir2hll/ir/break_stmt.h"
-#include "llvmir2hll/ir/const_int.h"
-#include "llvmir2hll/ir/continue_stmt.h"
-#include "llvmir2hll/ir/eq_op_expr.h"
-#include "llvmir2hll/ir/goto_stmt.h"
-#include "llvmir2hll/ir/if_stmt.h"
-#include "llvmir2hll/ir/return_stmt.h"
-#include "llvmir2hll/ir/switch_stmt.h"
-#include "llvmir2hll/optimizer/optimizers/if_to_switch_optimizer.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/types.h"
+#include "retdec/llvmir2hll/analysis/break_in_if_analysis.h"
+#include "retdec/llvmir2hll/analysis/value_analysis.h"
+#include "retdec/llvmir2hll/ir/break_stmt.h"
+#include "retdec/llvmir2hll/ir/const_int.h"
+#include "retdec/llvmir2hll/ir/continue_stmt.h"
+#include "retdec/llvmir2hll/ir/eq_op_expr.h"
+#include "retdec/llvmir2hll/ir/goto_stmt.h"
+#include "retdec/llvmir2hll/ir/if_stmt.h"
+#include "retdec/llvmir2hll/ir/return_stmt.h"
+#include "retdec/llvmir2hll/ir/switch_stmt.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/if_to_switch_optimizer.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/types.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -34,11 +35,6 @@ IfToSwitchOptimizer::IfToSwitchOptimizer(ShPtr<Module> module,
 	PRECONDITION_NON_NULL(module);
 	PRECONDITION_NON_NULL(va);
 }
-
-/**
-* @brief Destructs the optimizer.
-*/
-IfToSwitchOptimizer::~IfToSwitchOptimizer() {}
 
 void IfToSwitchOptimizer::visit(ShPtr<IfStmt> stmt) {
 	ShPtr<Expression> controlExpr(getControlExprIfConvertibleToSwitch(stmt));
@@ -127,7 +123,8 @@ ShPtr<Expression> IfToSwitchOptimizer::getControlExprIfConvertibleToSwitch(
 */
 void IfToSwitchOptimizer::convertIfStmtToSwitchStmt(ShPtr<IfStmt> ifStmt,
 		ShPtr<Expression> controlExpr) {
-	ShPtr<SwitchStmt> switchStmt(SwitchStmt::create(controlExpr));
+	ShPtr<SwitchStmt> switchStmt(
+		SwitchStmt::create(controlExpr, nullptr, ifStmt->getAddress()));
 	for (auto i = ifStmt->clause_begin(), e = ifStmt->clause_end(); i != e; ++i) {
 		// Append break statement at last statement of statements block. Because
 		// then we paste this statements block to case clause.
@@ -175,7 +172,7 @@ void IfToSwitchOptimizer::convertIfStmtToSwitchStmt(ShPtr<IfStmt> ifStmt,
 void IfToSwitchOptimizer::appendBreakStmtIfNeeded(ShPtr<Statement> stmt) {
 	if (!isa<ContinueStmt>(stmt) && !isa<ReturnStmt>(stmt) &&
 			!isa<GotoStmt>(stmt)) {
-		stmt->setSuccessor(BreakStmt::create());
+		stmt->setSuccessor(BreakStmt::create(stmt->getAddress()));
 	}
 }
 
@@ -200,3 +197,4 @@ ShPtr<Expression> IfToSwitchOptimizer::getNextOpIfSecondOneIsConstInt(
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

@@ -4,15 +4,16 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/assign_stmt.h"
-#include "llvmir2hll/ir/call_expr.h"
-#include "llvmir2hll/ir/call_stmt.h"
-#include "llvmir2hll/ir/cast_expr.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/optimizer/optimizers/remove_useless_casts_optimizer.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/utils/ir.h"
+#include "retdec/llvmir2hll/ir/assign_stmt.h"
+#include "retdec/llvmir2hll/ir/call_expr.h"
+#include "retdec/llvmir2hll/ir/call_stmt.h"
+#include "retdec/llvmir2hll/ir/cast_expr.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/remove_useless_casts_optimizer.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/utils/ir.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -27,11 +28,6 @@ RemoveUselessCastsOptimizer::RemoveUselessCastsOptimizer(ShPtr<Module> module):
 	FuncOptimizer(module) {
 		PRECONDITION_NON_NULL(module);
 	}
-
-/**
-* @brief Destructs the optimizer.
-*/
-RemoveUselessCastsOptimizer::~RemoveUselessCastsOptimizer() {}
 
 void RemoveUselessCastsOptimizer::visit(ShPtr<AssignStmt> stmt) {
 	if (tryOptimizationCase1(stmt)) {
@@ -85,3 +81,4 @@ bool RemoveUselessCastsOptimizer::tryOptimizationCase1(ShPtr<AssignStmt> stmt) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

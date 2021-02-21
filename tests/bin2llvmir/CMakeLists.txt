@@ -1,35 +1,47 @@
 
-set(BIN2LLVMIR_TESTS_SOURCES
+add_executable(tests-bin2llvmir
 	analyses/reaching_definitions_tests.cpp
-	analyses/uses_analysis_tests.cpp
-	analyses/var_depend_analysis_tests.cpp
 	optimizations/asm_inst_remover/asm_inst_remover_tests.cpp
-	optimizations/dsm_generator/dsm_generator_tests.cpp
-	optimizations/globals/dead_global_assign_tests.cpp
-	optimizations/globals/global_to_local.cpp
 	optimizations/idioms_libgcc/idioms_libgcc_tests.cpp
+	optimizations/inst_opt/inst_opt_pass_tests.cpp
 	optimizations/inst_opt/inst_opt_tests.cpp
-	optimizations/never_returning_funcs/never_returning_funcs_tests.cpp
 	optimizations/param_return/param_return_tests.cpp
-	optimizations/phi2seq/phi2seq_tests.cpp
 	optimizations/stack_pointer_ops/stack_pointer_ops_tests.cpp
-	optimizations/type_conversions/type_conversions_tests.cpp
 	optimizations/unreachable_funcs/unreachable_funcs_tests.cpp
-	optimizations/volatilize/volatilize_tests.cpp
+	optimizations/value_protect/value_protect_test.cpp
+	optimizations/writer_dsm/writer_dsm_tests.cpp
+	optimizations/x86_addr_spaces/x86_addr_spaces_pass_test.cpp
+	optimizations/x86_addr_spaces/x86_addr_spaces_test.cpp
+	optimizations/x87_fpu/x87_fpu_test.cpp
 	providers/asm_instruction_tests.cpp
 	providers/config_tests.cpp
 	providers/debugformat_tests.cpp
 	providers/demangler_tests.cpp
 	providers/fileimage_tests.cpp
 	providers/lti_tests.cpp
+	providers/names.cpp
+	utils/ctypes2llvm_type_tests.cpp
 	utils/instcombine_tests.cpp
-	utils/instruction_tests.cpp
 	utils/ir_modifier_tests.cpp
-	utils/simplifycfg_tests.cpp
-	utils/type_tests.cpp
+	utils/llvm_tests.cpp
+	utils/simplifycfg_tests.cpp)
+
+target_include_directories(tests-bin2llvmir
+	PRIVATE
+		${RETDEC_TESTS_DIR}
 )
 
-add_executable(bin2llvmir-tests ${BIN2LLVMIR_TESTS_SOURCES})
-target_link_libraries(bin2llvmir-tests bin2llvmir tl-cpputils gmock_main)
-target_include_directories(bin2llvmir-tests PUBLIC ${PROJECT_SOURCE_DIR}/tests/)
-install(TARGETS bin2llvmir-tests RUNTIME DESTINATION bin/unit-tests)
+target_link_libraries(tests-bin2llvmir
+	retdec::bin2llvmir
+	retdec::utils
+	retdec::deps::gmock_main
+)
+
+set_target_properties(tests-bin2llvmir
+	PROPERTIES
+		OUTPUT_NAME "retdec-tests-bin2llvmir"
+)
+
+install(TARGETS tests-bin2llvmir
+	RUNTIME DESTINATION ${RETDEC_INSTALL_TESTS_DIR}
+)

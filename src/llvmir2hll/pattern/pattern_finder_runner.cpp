@@ -4,20 +4,11 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/pattern/pattern_finder_runner.h"
-#include "llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/pattern/pattern_finder_runner.h"
+#include "retdec/llvmir2hll/support/debug.h"
 
+namespace retdec {
 namespace llvmir2hll {
-
-/**
-* @brief Constructs a runner of pattern finders.
-*/
-PatternFinderRunner::PatternFinderRunner() {}
-
-/**
-* @brief Destructs the finder.
-*/
-PatternFinderRunner::~PatternFinderRunner() {}
 
 /**
 * @brief Runs all the given pattern finders in @a pfs on @a module.
@@ -61,3 +52,4 @@ void PatternFinderRunner::run(ShPtr<PatternFinder> pf, ShPtr<Module> module) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

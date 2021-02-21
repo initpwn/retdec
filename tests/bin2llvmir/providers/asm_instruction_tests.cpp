@@ -6,12 +6,13 @@
 
 #include <gtest/gtest.h>
 
-#include "bin2llvmir/providers/asm_instruction.h"
+#include "retdec/bin2llvmir/providers/asm_instruction.h"
 #include "bin2llvmir/utils/llvmir_tests.h"
 
 using namespace ::testing;
 using namespace llvm;
 
+namespace retdec {
 namespace bin2llvmir {
 namespace tests {
 
@@ -40,11 +41,10 @@ TEST_F(AsmInstructionTests, getLlvmToAsmGlobalVariableFindsGlobal)
 		define void @fnc() {
 			ret void
 		}
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
-	auto* ref = getValueByName("llvm2asm");
+	auto* ref = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), ref);
 	auto* gv = AsmInstruction::getLlvmToAsmGlobalVariable(module.get());
 
 	EXPECT_NE(nullptr, gv);
@@ -57,8 +57,6 @@ TEST_F(AsmInstructionTests, getLlvmToAsmGlobalVariableDoesNotFindGlobal)
 		define void @fnc() {
 			ret void
 		}
-		!0 = !{ !"llvm2asm" }
-		!bad_name = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
 	auto* gv = AsmInstruction::getLlvmToAsmGlobalVariable(module.get());
@@ -97,20 +95,60 @@ TEST_F(AsmInstructionTests, getInstructionAddressReturnsAddressIfAddrInfoAvailab
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 0, 1
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto* a = getInstructionByName("a");
 
 	auto addr = AsmInstruction::getInstructionAddress(a);
 
 	ASSERT_NE(nullptr, a);
+	EXPECT_TRUE(addr.isDefined());
+	EXPECT_EQ(1234, addr);
+}
+
+//
+// getBasicBlockAddress()
+//
+
+TEST_F(AsmInstructionTests, getBasicBlockAddressReturnsUndefAddressIfNotAddrInfo)
+{
+	parseInput(R"(
+		define void @fnc() {
+		bb:
+			%a = add i32 0, 1
+			ret void
+		}
+	)");
+	auto* bb = getInstructionByName("a")->getParent();
+	ASSERT_NE(nullptr, bb);
+
+	auto addr = AsmInstruction::getBasicBlockAddress(bb);
+	EXPECT_TRUE(addr.isUndefined());
+}
+
+TEST_F(AsmInstructionTests, getBasicBlockAddressReturnsAddressIfAddrInfoAvailable)
+{
+	parseInput(R"(
+		define void @fnc() {
+			store volatile i64 1234, i64* @llvm2asm
+			%a = add i32 0, 1
+			ret void
+		}
+		@llvm2asm = global i64 0
+	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
+	auto* bb = getInstructionByName("a")->getParent();
+	ASSERT_NE(nullptr, bb);
+
+	auto addr = AsmInstruction::getBasicBlockAddress(bb);
+
 	EXPECT_TRUE(addr.isDefined());
 	EXPECT_EQ(1234, addr);
 }
@@ -130,14 +168,13 @@ TEST_F(AsmInstructionTests, isLlvmToAsmInstructionReturnsTrueForMapInstruction)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto* ref = getNthInstruction<StoreInst>();
 	bool b = AsmInstruction::isLlvmToAsmInstruction(ref);
 
@@ -194,14 +231,13 @@ TEST_F(AsmInstructionTests, AsmInstructionCtorInstructionConstructsValidForMapIn
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto* ref = getNthInstruction<StoreInst>();
 	auto a = AsmInstruction(ref);
 
@@ -215,16 +251,15 @@ TEST_F(AsmInstructionTests, AsmInstructionCtorInstructionConstructsValidForOrdin
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 1, 2
 			%b = mul i32 %a, 3
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto* ref = getNthInstruction<StoreInst>();
 	auto* ret = getNthInstruction<ReturnInst>();
 	auto a = AsmInstruction(ret);
@@ -238,7 +273,7 @@ TEST_F(AsmInstructionTests, AsmInstructionCtorInstructionConstructsValidIfInDiff
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			br label %lab_0
 		lab_0:
 			br label %lab_1
@@ -248,11 +283,10 @@ TEST_F(AsmInstructionTests, AsmInstructionCtorInstructionConstructsValidIfInDiff
 			br label %lab_1
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto* ref = getNthInstruction<StoreInst>();
 	auto* ret = getNthInstruction<ReturnInst>();
 	auto a = AsmInstruction(ret);
@@ -263,7 +297,7 @@ TEST_F(AsmInstructionTests, AsmInstructionCtorInstructionConstructsValidIfInDiff
 }
 
 //
-// AsmInstruction(llvm::Module*, tl_cpputils::Address)
+// AsmInstruction(llvm::Module*, retdec::common::Address)
 //
 
 TEST_F(AsmInstructionTests, AsmInstructionCtorAddressConstructsInvalidForNullptr)
@@ -278,14 +312,13 @@ TEST_F(AsmInstructionTests, AsmInstructionCtorAddressConstructsInvalidForBadAddr
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a = AsmInstruction(module.get(), 123);
 
 	EXPECT_TRUE(a.isInvalid());
@@ -309,14 +342,13 @@ TEST_F(AsmInstructionTests, AsmInstructionCtorAddressConstructsValidForGoodAddre
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto* ref = getNthInstruction<StoreInst>();
 	auto a = AsmInstruction(module.get(), 1234);
 
@@ -342,14 +374,13 @@ TEST_F(AsmInstructionTests, AsmInstructionCtorFunctionConstructsValidForMapInstr
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto* ref = getNthInstruction<StoreInst>();
 	auto* f = getFunctionByName("fnc");
 	auto a = AsmInstruction(f);
@@ -367,10 +398,10 @@ TEST_F(AsmInstructionTests, AsmInstructionCtorFunctionConstructsInvalidIfNoSpeci
 			%b = mul i32 %a, 3
 			ret void
 		}
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto* f = getFunctionByName("fnc");
 	auto a = AsmInstruction(f);
 
@@ -395,14 +426,13 @@ TEST_F(AsmInstructionTests, AsmInstructionValidEq)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a1 = AsmInstruction(module.get(), 1234);
 	auto a2 = AsmInstruction(module.get(), 1234);
 
@@ -419,14 +449,13 @@ TEST_F(AsmInstructionTests, AsmInstructionValidInvalidNeq)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a1 = AsmInstruction(module.get(), 1234);
 	auto a2 = AsmInstruction();
 
@@ -440,16 +469,14 @@ TEST_F(AsmInstructionTests, AsmInstructionValidValidNeq)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 1234, i64* @llvm2asm
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a1 = AsmInstruction(module.get(), 1234);
 	auto a2 = AsmInstruction(module.get(), 5678);
 
@@ -467,7 +494,7 @@ TEST_F(AsmInstructionTests, getInstructionsReturnsCorrectInstructions)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 1, 2
 			br label %lab_0
 		lab_0:
@@ -476,16 +503,14 @@ TEST_F(AsmInstructionTests, getInstructionsReturnsCorrectInstructions)
 			%b = add i32 1, 2
 			%c = mul i32 %b, 3
 			br label %lab_1
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			%d = mul i32 1, 2
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto* a = getInstructionByName("a");
 	auto* b0 = getNthInstruction<BranchInst>();
 	auto* b1 = getNthInstruction<BranchInst>(1);
@@ -509,17 +534,15 @@ TEST_F(AsmInstructionTests, getInstructionsReturnsEmptyIfNoInstructions)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 1234, i64* @llvm2asm
+			store volatile i64 5678, i64* @llvm2asm
 			%a = mul i32 1, 2
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a = AsmInstruction(module.get(), 1234);
 
 	EXPECT_TRUE(a.isValid());
@@ -534,17 +557,15 @@ TEST_F(AsmInstructionTests, instructionCanBeErasedWhenEmpty)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 1234, i64* @llvm2asm
+			store volatile i64 5678, i64* @llvm2asm
 			%a = mul i32 1, 2
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a = AsmInstruction(module.get(), 1234);
 
 	EXPECT_TRUE(a.isValid());
@@ -555,16 +576,15 @@ TEST_F(AsmInstructionTests, instructionCanBeErased)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 1, 2
 			%b = mul i32 %a, %b
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a = AsmInstruction(module.get(), 1234);
 
 	EXPECT_TRUE(a.isValid());
@@ -575,18 +595,16 @@ TEST_F(AsmInstructionTests, instructionCanNotBeErased)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 1, 2
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			%b = mul i32 %a, 3
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a = AsmInstruction(module.get(), 1234);
 
 	EXPECT_TRUE(a.isValid());
@@ -597,24 +615,21 @@ TEST_F(AsmInstructionTests, instructionCanNotBeErasedBecauseOfTerminatingBranch)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 123, i64* @llvm2asm, !asm !1
+			store volatile i64 123, i64* @llvm2asm
 			%a = add i32 1, 2
 			br label %lab_456
 		lab_456:
 			%b = add i32 1, 2
-			store volatile i64 456, i64* @llvm2asm, !asm !2
+			store volatile i64 456, i64* @llvm2asm
 			%c = add i32 1, 2
-			store volatile i64 789, i64* @llvm2asm, !asm !3
+			store volatile i64 789, i64* @llvm2asm
 			br label %lab_456
 			ret void
 		}
-		!1 = !{ !"name", i64 123, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 456, i64 10, !"asm", !"annotation" }
-		!3 = !{ !"name", i64 789, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a = AsmInstruction(module.get(), 123);
 
 	EXPECT_TRUE(a.isValid());
@@ -625,20 +640,18 @@ TEST_F(AsmInstructionTests, instructionCanBeErasedEvenIfBbStartInTheMiddle)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 1, 2
 			br label %lab_0
 		lab_0:
 			%b = mul i32 %a, 3
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a = AsmInstruction(module.get(), 1234);
 
 	EXPECT_TRUE(a.isValid());
@@ -653,31 +666,25 @@ TEST_F(AsmInstructionTests, eraseInstructionsSuccessfullyErasesAllInstructions)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 1, 2
 			%b = mul i32 %a, 3
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a = AsmInstruction(module.get(), 1234);
 	bool b = a.eraseInstructions();
 
 	std::string exp = R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 1234, i64* @llvm2asm
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)";
 	EXPECT_TRUE(b);
@@ -688,33 +695,27 @@ TEST_F(AsmInstructionTests, eraseInstructionsFailsToEraseInstructionsButDoesNotC
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 1, 2
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			%b = mul i32 %a, 3
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a = AsmInstruction(module.get(), 1234);
 	bool b = a.eraseInstructions();
 
 	std::string exp = R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 1, 2
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			%b = mul i32 %a, 3
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)";
 	EXPECT_FALSE(b);
@@ -725,34 +726,28 @@ TEST_F(AsmInstructionTests, eraseInstructionsBasicBlocks1)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 123, i64* @llvm2asm, !asm !1
+			store volatile i64 123, i64* @llvm2asm
 			%a = add i32 1, 2
 			br label %lab_0
 		lab_0:
-			store volatile i64 456, i64* @llvm2asm, !asm !2
+			store volatile i64 456, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 123, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 456, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a = AsmInstruction(module.get(), 123);
 	bool b = a.eraseInstructions();
 
 	std::string exp = R"(
 		define void @fnc() {
-			store volatile i64 123, i64* @llvm2asm, !asm !1
+			store volatile i64 123, i64* @llvm2asm
 			br label %lab_0
 		lab_0:
-			store volatile i64 456, i64* @llvm2asm, !asm !2
+			store volatile i64 456, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 123, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 456, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)";
 	EXPECT_TRUE(b);
@@ -763,36 +758,30 @@ TEST_F(AsmInstructionTests, eraseInstructionsBasicBlocks2)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 123, i64* @llvm2asm, !asm !1
+			store volatile i64 123, i64* @llvm2asm
 			br i1 1, label %true, label %false
 		true:
 			%a = add i32 1, 2
 			br label %false
 		false:
-			store volatile i64 456, i64* @llvm2asm, !asm !2
+			store volatile i64 456, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 123, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 456, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a = AsmInstruction(module.get(), 123);
 	bool b = a.eraseInstructions();
 
 	std::string exp = R"(
 		define void @fnc() {
-			store volatile i64 123, i64* @llvm2asm, !asm !1
+			store volatile i64 123, i64* @llvm2asm
 			br label %false
 		false:
-			store volatile i64 456, i64* @llvm2asm, !asm !2
+			store volatile i64 456, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 123, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 456, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)";
 	EXPECT_TRUE(b);
@@ -815,7 +804,7 @@ TEST_F(AsmInstructionTests, getNextReturnValidNext)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 1, 2
 			br label %lab_0
 		lab_0:
@@ -824,15 +813,13 @@ TEST_F(AsmInstructionTests, getNextReturnValidNext)
 			%b = add i32 1, 2
 			%c = mul i32 %b, 3
 			br label %lab_1
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto ref = AsmInstruction(module.get(), 5678);
 	auto a1 = AsmInstruction(module.get(), 1234);
 	auto a2 = a1.getNext();
@@ -845,14 +832,13 @@ TEST_F(AsmInstructionTests, getNextReturnInvalidNextForLast)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a1 = AsmInstruction(module.get(), 1234);
 	auto a2 = a1.getNext();
 
@@ -876,7 +862,7 @@ TEST_F(AsmInstructionTests, getPrevReturnValidprev)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 1, 2
 			br label %lab_0
 		lab_0:
@@ -885,15 +871,13 @@ TEST_F(AsmInstructionTests, getPrevReturnValidprev)
 			%b = add i32 1, 2
 			%c = mul i32 %b, 3
 			br label %lab_1
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto ref = AsmInstruction(module.get(), 1234);
 	auto a1 = AsmInstruction(module.get(), 5678);
 	auto a2 = a1.getPrev();
@@ -906,14 +890,13 @@ TEST_F(AsmInstructionTests, getPrevReturnInvalidNextForFirst)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a1 = AsmInstruction(module.get(), 1234);
 	auto a2 = a1.getPrev();
 
@@ -937,16 +920,14 @@ TEST_F(AsmInstructionTests, frontForValidButEmptyReturnsNullptr)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 1234, i64* @llvm2asm
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a = AsmInstruction(module.get(), 1234);
 
 	ASSERT_TRUE(a.isValid());
@@ -957,19 +938,17 @@ TEST_F(AsmInstructionTests, frontForValidNonEmptyReturnsFirstInstruction)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 1, 2
 			br label %lab_0
 		lab_0:
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a = AsmInstruction(module.get(), 1234);
 	auto* ref = getInstructionByName("a");
 
@@ -993,16 +972,14 @@ TEST_F(AsmInstructionTests, backForValidButEmptyReturnsNullptr)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 1234, i64* @llvm2asm
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a = AsmInstruction(module.get(), 1234);
 
 	ASSERT_TRUE(a.isValid());
@@ -1013,7 +990,7 @@ TEST_F(AsmInstructionTests, backForValidNonEmptyReturnsLastInstruction)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 1, 2
 			br label %lab_0
 		lab_0:
@@ -1022,15 +999,13 @@ TEST_F(AsmInstructionTests, backForValidNonEmptyReturnsLastInstruction)
 			%b = add i32 1, 2
 			%c = mul i32 %b, 3
 			br label %lab_1
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a = AsmInstruction(module.get(), 1234);
 	auto* ref = getNthInstruction<BranchInst>(2);
 
@@ -1045,7 +1020,7 @@ TEST_F(AsmInstructionTests, backForValidNonEmptyReturnsLastInstruction)
 TEST_F(AsmInstructionTests, insertBackForInvalidDoesNotInsert)
 {
 	auto a = AsmInstruction();
-	auto* i = new AllocaInst(Type::getInt32Ty(module->getContext()));
+	auto* i = new AllocaInst(Type::getInt32Ty(module->getContext()), 0);
 
 	ASSERT_TRUE(a.isInvalid());
 	ASSERT_NE(nullptr, i);
@@ -1063,38 +1038,32 @@ TEST_F(AsmInstructionTests, insertBackForValidComplexAsmInstruction)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 1, 2
 			%b = add i32 1, 2
 			%c = mul i32 %b, 3
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a = AsmInstruction(module.get(), 1234);
-	auto* i = new AllocaInst(Type::getInt32Ty(module->getContext()), "test");
+	auto* i = new AllocaInst(Type::getInt32Ty(module->getContext()), 0, "test");
 
 	a.insertBack(i);
 
 	std::string exp = R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 1, 2
 			%b = add i32 1, 2
 			%c = mul i32 %b, 3
 			%test = alloca i32
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)";
 	checkModuleAgainstExpectedIr(exp);
@@ -1107,7 +1076,7 @@ TEST_F(AsmInstructionTests, insertBackForValidComplexAsmInstruction)
 TEST_F(AsmInstructionTests, insertBackSafeForInvalidDoesNotInsert)
 {
 	auto a = AsmInstruction();
-	auto* i = new AllocaInst(Type::getInt32Ty(module->getContext()));
+	auto* i = new AllocaInst(Type::getInt32Ty(module->getContext()), 0);
 
 	ASSERT_TRUE(a.isInvalid());
 	ASSERT_NE(nullptr, i);
@@ -1125,38 +1094,32 @@ TEST_F(AsmInstructionTests, insertBackSafeForValidComplexAsmInstruction)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 1, 2
 			%b = add i32 1, 2
 			%c = mul i32 %b, 3
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a = AsmInstruction(module.get(), 1234);
-	auto* i = new AllocaInst(Type::getInt32Ty(module->getContext()), "test");
+	auto* i = new AllocaInst(Type::getInt32Ty(module->getContext()), 0, "test");
 
 	a.insertBackSafe(i);
 
 	std::string exp = R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 1, 2
 			%b = add i32 1, 2
 			%c = mul i32 %b, 3
 			%test = alloca i32
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)";
 	checkModuleAgainstExpectedIr(exp);
@@ -1166,137 +1129,28 @@ TEST_F(AsmInstructionTests, insertBackSafeForTerminatorAsmInstruction)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto a = AsmInstruction(module.get(), 1234);
-	auto* i = new AllocaInst(Type::getInt32Ty(module->getContext()), "test");
+	auto* i = new AllocaInst(Type::getInt32Ty(module->getContext()), 0, "test");
 
 	a.insertBackSafe(i);
 
 	std::string exp = R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%test = alloca i32
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)";
 	checkModuleAgainstExpectedIr(exp);
 }
-
-//
-// dump()
-// operator<<()
-//
-
-// TODO
-//
-//TEST_F(AsmInstructionTests, dumpInvalid)
-//{
-//	auto a = AsmInstruction();
-//	std::stringstream ss;
-//	ss << a;
-//
-//	EXPECT_EQ("INVALID\n", a.dump());
-//	EXPECT_EQ("INVALID\n", ss.str());
-//}
-//
-//TEST_F(AsmInstructionTests, dumpValidOneBb)
-//{
-//	parseInput(R"(
-//		define void @fnc() {
-//			store volatile i64 1234, i64* @llvm2asm, !asm !1
-//			%a = add i32 1, 2
-//			%b = add i32 1, 2
-//			%c = mul i32 %b, 3
-//			store volatile i64 5678, i64* @llvm2asm, !asm !2
-//			ret void
-//		}
-//		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-//		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-//		!0 = !{ !"llvm2asm" }
-//		!llvmToAsmGlobalVariableName = !{ !0 }
-//		@llvm2asm = global i64 0
-//	)");
-//	auto a = AsmInstruction(module.get(), 1234);
-//	std::stringstream ss;
-//	ss << a;
-//
-//	std::string exp = R"(
-//		[ASM: name @ 4d2--4dc]
-//			store volatile i64 1234, i64* @llvm2asm, !asm !1
-//			%a = add i32 1, 2
-//			%b = add i32 1, 2
-//			%c = mul i32 %b, 3
-//	)";
-//
-//	EXPECT_TRUE(
-//			tl_cpputils::removeWhitespace(exp) ==
-//			tl_cpputils::removeWhitespace(a.dump()))
-//			<< "expected: " << exp << "\nactual: " << a.dump() << "\n";
-//	EXPECT_TRUE(
-//			tl_cpputils::removeWhitespace(exp) ==
-//			tl_cpputils::removeWhitespace(ss.str()))
-//			<< "expected: " << exp << "\nactual: " << ss.str() << "\n";
-//}
-//
-//TEST_F(AsmInstructionTests, dumpValidMultipleBbs)
-//{
-//	parseInput(R"(
-//		define void @fnc() {
-//			store volatile i64 1234, i64* @llvm2asm, !asm !1
-//			%a = add i32 1, 2
-//			br label %lab_0
-//		lab_0:
-//			br label %lab_1
-//		lab_1:
-//			%b = add i32 1, 2
-//			%c = mul i32 %b, 3
-//			br label %lab_1
-//			store volatile i64 5678, i64* @llvm2asm, !asm !2
-//			ret void
-//		}
-//		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-//		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-//		!0 = !{ !"llvm2asm" }
-//		!llvmToAsmGlobalVariableName = !{ !0 }
-//		@llvm2asm = global i64 0
-//	)");
-//	auto a = AsmInstruction(module.get(), 1234);
-//	std::stringstream ss;
-//	ss << a;
-//
-//	std::string exp = R"(
-//		[ASM: name @ 4d2--4dc]
-//		  store volatile i64 1234, i64* @llvm2asm, !asm !1
-//		  %a = add i32 1, 2
-//		  br label %lab_0
-//		lab_0:
-//		  br label %lab_1
-//		lab_1:
-//		  %b = add i32 1, 2
-//		  %c = mul i32 %b, 3
-//		  br label %lab_1
-//	)";
-//
-//	EXPECT_TRUE(
-//			tl_cpputils::removeWhitespace(exp) ==
-//			tl_cpputils::removeWhitespace(a.dump()))
-//			<< "expected: " << exp << "\nactual: " << a.dump() << "\n";
-//	EXPECT_TRUE(
-//			tl_cpputils::removeWhitespace(exp) ==
-//			tl_cpputils::removeWhitespace(ss.str()))
-//			<< "expected: " << exp << "\nactual: " << ss.str() << "\n";
-//}
 
 //
 // iterator
@@ -1320,16 +1174,14 @@ TEST_F(AsmInstructionTests, iteratorEmpty)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 1234, i64* @llvm2asm
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto ai = AsmInstruction(module.get(), 1234);
 
 	EXPECT_EQ(ai.end(), ai.begin());
@@ -1339,16 +1191,14 @@ TEST_F(AsmInstructionTests, riteratorEmpty)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 1234, i64* @llvm2asm
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto ai = AsmInstruction(module.get(), 1234);
 
 	EXPECT_EQ(ai.rend(), ai.rbegin());
@@ -1358,7 +1208,7 @@ TEST_F(AsmInstructionTests, iteratorComplex)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 1, 2
 			br label %lab_0
 		lab_0:
@@ -1367,15 +1217,13 @@ TEST_F(AsmInstructionTests, iteratorComplex)
 			%b = add i32 1, 2
 			%c = mul i32 %b, 3
 			br label %lab_1
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto ai = AsmInstruction(module.get(), 1234);
 	auto* a = getInstructionByName("a");
 	auto* br1 = getNthInstruction<BranchInst>();
@@ -1425,7 +1273,7 @@ TEST_F(AsmInstructionTests, riteratorComplex)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 1, 2
 			br label %lab_0
 		lab_0:
@@ -1434,15 +1282,13 @@ TEST_F(AsmInstructionTests, riteratorComplex)
 			%b = add i32 1, 2
 			%c = mul i32 %b, 3
 			br label %lab_1
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto ai = AsmInstruction(module.get(), 1234);
 	auto* a = getInstructionByName("a");
 	auto* br1 = getNthInstruction<BranchInst>();
@@ -1494,30 +1340,26 @@ TEST_F(AsmInstructionTests, makeTerminalOnLastInFunction)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			br label %lab_0
 		lab_0:
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto ai = AsmInstruction(module.get(), 1234);
 	auto* ret = getNthInstruction<ReturnInst>();
 	auto* t = ai.makeTerminal();
 
 	std::string exp = R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			br label %lab_0
 		lab_0:
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)";
 	EXPECT_EQ(ret, t);
@@ -1528,38 +1370,32 @@ TEST_F(AsmInstructionTests, makeTerminalOnLastInBb)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			br label %lab_0
 		lab_0:
 			br label %lab_1
 		lab_1:
-			store volatile i64 5678, i64* @llvm2asm, !asm !1
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto ai = AsmInstruction(module.get(), 1234);
 	auto* br = getNthInstruction<BranchInst>(1);
 	auto* t = ai.makeTerminal();
 
 	std::string exp = R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			br label %lab_0
 		lab_0:
 			br label %lab_1
 		lab_1:
-			store volatile i64 5678, i64* @llvm2asm, !asm !1
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)";
 	EXPECT_EQ(br, t);
@@ -1570,34 +1406,28 @@ TEST_F(AsmInstructionTests, makeTerminalOnAsmInTheMiddle)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 1, 2
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto ai = AsmInstruction(module.get(), 1234);
 	auto* t = ai.makeTerminal();
 	auto* br = getNthInstruction<BranchInst>();
 
 	std::string exp = R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 1, 2
 			br label %dec_label_pc_162e
 			dec_label_pc_162e:                                      ; preds = %0
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)";
 	EXPECT_EQ(br, t);
@@ -1608,40 +1438,34 @@ TEST_F(AsmInstructionTests, makeTerminalOnAsmWithMultipleBb)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 1, 2
 			br label %lab_1
 		lab_1:
 			%b = add i32 1, 2
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto ai = AsmInstruction(module.get(), 1234);
 	auto* t = ai.makeTerminal();
 	auto* br = getNthInstruction<BranchInst>(1);
 
 	std::string exp = R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			%a = add i32 1, 2
 			br label %lab_1
 		lab_1:                                            ; preds = %0
 			%b = add i32 1, 2
 			br label %dec_label_pc_162e
 		dec_label_pc_162e:                                ; preds = %lab_1
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)";
 	EXPECT_EQ(br, t);
@@ -1656,26 +1480,23 @@ TEST_F(AsmInstructionTests, makeStartOnFirstInFunction)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto ai = AsmInstruction(module.get(), 1234);
 	auto* orig = ai.getBasicBlock();
-	auto* ret = ai.makeStart();
+	auto* ret = ai.makeStart("lab_0");
 
 	std::string exp = R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+		lab_0:
+			store volatile i64 1234, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)";
 	EXPECT_EQ(orig, ret);
@@ -1686,34 +1507,28 @@ TEST_F(AsmInstructionTests, makeStartOnFirstBb)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			br label %lab_0
 		lab_0:
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto ai = AsmInstruction(module.get(), 5678);
 	auto* orig = ai.getBasicBlock();
-	auto* ret = ai.makeStart();
+	auto* ret = ai.makeStart("lab_0");
 
 	std::string exp = R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			br label %lab_0
 		lab_0:
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)";
 	EXPECT_EQ(orig, ret);
@@ -1724,32 +1539,26 @@ TEST_F(AsmInstructionTests, makeStartInTheMeddleOfBb)
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 1234, i64* @llvm2asm
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto ai = AsmInstruction(module.get(), 5678);
 	auto* orig = ai.getBasicBlock();
 	auto* ret = ai.makeStart();
 
 	std::string exp = R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			br label %dec_label_pc_162e
 			dec_label_pc_162e:                                      ; preds = %0
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)";
 	EXPECT_NE(orig, ret);
@@ -1772,16 +1581,14 @@ TEST_F(AsmInstructionTests, containsInstructionSpecialInstructionIsNotTakenIntoA
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 1234, i64* @llvm2asm
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto ai = AsmInstruction(module.get(), 1234);
 
 	ASSERT_TRUE(ai.isValid());
@@ -1793,17 +1600,15 @@ TEST_F(AsmInstructionTests, containsInstructionReturnsTrueIfItContainsInstructio
 	parseInput(R"(
 		@r = global i32 0
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			store i32 0, i32* @r
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto ai = AsmInstruction(module.get(), 1234);
 
 	ASSERT_TRUE(ai.isValid());
@@ -1815,17 +1620,15 @@ TEST_F(AsmInstructionTests, containsInstructionReturnsFalseIfItDoesNotContainIns
 	parseInput(R"(
 		@r = global i32 0
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			store i32 0, i32* @r
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto ai = AsmInstruction(module.get(), 1234);
 
 	ASSERT_TRUE(ai.isValid());
@@ -1848,16 +1651,14 @@ TEST_F(AsmInstructionTests, getInstructionFirstSpecialInstructionIsNotTakenIntoA
 {
 	parseInput(R"(
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 1234, i64* @llvm2asm
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto ai = AsmInstruction(module.get(), 1234);
 
 	ASSERT_TRUE(ai.isValid());
@@ -1869,17 +1670,15 @@ TEST_F(AsmInstructionTests, getInstructionFirstReturnsContainedInstruction)
 	parseInput(R"(
 		@r = global i32 0
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			store i32 0, i32* @r
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto ai = AsmInstruction(module.get(), 1234);
 	auto* s = getNthInstruction<StoreInst>(1);
 
@@ -1892,17 +1691,15 @@ TEST_F(AsmInstructionTests, getInstructionFirstReturnsNullptrIfItDoesNotContainI
 	parseInput(R"(
 		@r = global i32 0
 		define void @fnc() {
-			store volatile i64 1234, i64* @llvm2asm, !asm !1
+			store volatile i64 1234, i64* @llvm2asm
 			store i32 0, i32* @r
-			store volatile i64 5678, i64* @llvm2asm, !asm !2
+			store volatile i64 5678, i64* @llvm2asm
 			ret void
 		}
-		!1 = !{ !"name", i64 1234, i64 10, !"asm", !"annotation" }
-		!2 = !{ !"name", i64 5678, i64 10, !"asm", !"annotation" }
-		!0 = !{ !"llvm2asm" }
-		!llvmToAsmGlobalVariableName = !{ !0 }
 		@llvm2asm = global i64 0
 	)");
+	auto* mapGv = getGlobalByName("llvm2asm");
+	AsmInstruction::setLlvmToAsmGlobalVariable(module.get(), mapGv);
 	auto ai = AsmInstruction(module.get(), 1234);
 
 	ASSERT_TRUE(ai.isValid());
@@ -1911,3 +1708,4 @@ TEST_F(AsmInstructionTests, getInstructionFirstReturnsNullptrIfItDoesNotContainI
 
 } // namespace tests
 } // namespace bin2llvmir
+} // namespace retdec

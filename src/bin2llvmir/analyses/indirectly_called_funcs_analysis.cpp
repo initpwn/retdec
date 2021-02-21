@@ -4,13 +4,13 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "tl-cpputils/container.h"
-#include "bin2llvmir/analyses/indirectly_called_funcs_analysis.h"
-#include "bin2llvmir/utils/instruction.h"
+#include "retdec/utils/container.h"
+#include "retdec/bin2llvmir/analyses/indirectly_called_funcs_analysis.h"
 
-using namespace tl_cpputils;
+using namespace retdec::utils;
 using namespace llvm;
 
+namespace retdec {
 namespace bin2llvmir {
 
 namespace {
@@ -55,17 +55,17 @@ bool hasEqArgsAndParams(const CallInst &call, Function &func)
 *
 * @return Found functions that can be called indirectly.
 */
-FuncSet IndirectlyCalledFuncsAnalysis::getFuncsForIndirectCalls(
-		const CallInstSet &call,
+std::set<llvm::Function*> IndirectlyCalledFuncsAnalysis::getFuncsForIndirectCalls(
+		const std::set<llvm::CallInst*> &call,
 		Module::FunctionListType &funcsToCheck)
 {
-	FuncVec funcVec;
+	std::vector<llvm::Function*> funcVec;
 	for (Function &func : funcsToCheck)
 	{
 		funcVec.push_back(&func);
 	}
 
-	FuncSet indirectlyCalledFuncs;
+	std::set<llvm::Function*> indirectlyCalledFuncs;
 	for (CallInst *callInst : call)
 	{
 		addToSet(getFuncsForIndirectCall(*callInst, funcVec),
@@ -87,13 +87,13 @@ FuncSet IndirectlyCalledFuncsAnalysis::getFuncsForIndirectCalls(
 *
 * @return Found functions that can be called indirectly.
 */
-FuncSet IndirectlyCalledFuncsAnalysis::getFuncsForIndirectCall(
+std::set<llvm::Function*> IndirectlyCalledFuncsAnalysis::getFuncsForIndirectCall(
 		const CallInst &call,
-		const FuncVec &funcsToCheck)
+		const std::vector<llvm::Function*> &funcsToCheck)
 {
-	assert(isIndirectCall(call) && "Expected an indirect call.");
+	assert(call.getCalledFunction() == nullptr && "Expected an indirect call.");
 
-	FuncSet result;
+	std::set<llvm::Function*> result;
 	Type *callReturnType = call.getType();
 	for (Function *func : funcsToCheck)
 	{
@@ -117,3 +117,4 @@ FuncSet IndirectlyCalledFuncsAnalysis::getFuncsForIndirectCall(
 }
 
 } // namespace bin2llvmir
+} // namespace retdec

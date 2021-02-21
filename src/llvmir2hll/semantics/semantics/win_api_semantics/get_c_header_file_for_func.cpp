@@ -5,9 +5,10 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/semantics/semantics/impl_support/get_c_header_file_for_func.h"
-#include "llvmir2hll/semantics/semantics/win_api_semantics/get_c_header_file_for_func.h"
+#include "retdec/llvmir2hll/semantics/semantics/impl_support/get_c_header_file_for_func.h"
+#include "retdec/llvmir2hll/semantics/semantics/win_api_semantics/get_c_header_file_for_func.h"
 
+namespace retdec {
 namespace llvmir2hll {
 namespace semantics {
 namespace win_api {
@@ -3871,10 +3872,11 @@ const StringStringUMap &FUNC_C_HEADER_MAP(initFuncCHeaderMap());
 *
 * See its description for more details.
 */
-Maybe<std::string> getCHeaderFileForFunc(const std::string &funcName) {
+std::optional<std::string> getCHeaderFileForFunc(const std::string &funcName) {
 	return getCHeaderFileForFuncFromMap(funcName, FUNC_C_HEADER_MAP);
 }
 
 } // namespace win_api
 } // namespace semantics
 } // namespace llvmir2hll
+} // namespace retdec

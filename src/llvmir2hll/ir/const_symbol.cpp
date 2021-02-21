@@ -4,10 +4,11 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/const_symbol.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/const_symbol.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -17,11 +18,6 @@ namespace llvmir2hll {
 */
 ConstSymbol::ConstSymbol(const std::string &name, ShPtr<Constant> value):
 	Constant(), name(name), value(value) {}
-
-/**
-* @brief Destructs the constant.
-*/
-ConstSymbol::~ConstSymbol() {}
 
 ShPtr<Value> ConstSymbol::clone() {
 	ShPtr<ConstSymbol> constSymbol(ConstSymbol::create(name, value));
@@ -113,3 +109,4 @@ void ConstSymbol::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

@@ -1,10 +1,15 @@
 # RetDec
 
+[![Travis CI build status](https://travis-ci.org/avast/retdec.svg?branch=master)](https://travis-ci.org/avast/retdec)
+[![TeamCity build status](https://retdec-tc.avast.com/app/rest/builds/aggregated/strob:(buildType:(project:(id:Retdec)))/statusIcon)](https://retdec-tc.avast.com/project.html?projectId=Retdec&guest=1)
+
 [RetDec](https://retdec.com/) is a retargetable machine-code decompiler based on [LLVM](https://llvm.org/).
 
 The decompiler is not limited to any particular target architecture, operating system, or executable file format:
-* Supported file formats: ELF, PE, Mach-O, COFF, AR (archive), Intel HEX, and raw machine code.
-* Supported architectures (32b only): Intel x86, ARM, MIPS, PIC32, and PowerPC.
+* Supported file formats: ELF, PE, Mach-O, COFF, AR (archive), Intel HEX, and raw machine code
+* Supported architectures:
+    * 32-bit: Intel x86, ARM, MIPS, PIC32, and PowerPC
+    * 64-bit: x86-64, ARM64 (AArch64)
 
 Features:
 * Static analysis of executable files with detailed information.
@@ -20,142 +25,315 @@ Features:
 * Output in two high-level languages: C and a Python-like language.
 * Generation of call graphs, control-flow graphs, and various statistics.
 
-## Installation and Use
+For more information, check out our
+* [Wiki](https://github.com/avast/retdec/wiki) (in progress)
+* Botconf 2017 talk: [slides](https://retdec.com/static/publications/retdec-slides-botconf-2017.pdf), [video](https://www.youtube.com/watch?v=HHFvtt5b6yY)
+* REcon Montreal 2018 talk: [slides](https://retdec.com/static/publications/retdec-slides-recon-2018.pdf)
+* [Publications](https://retdec.com/publications/)
 
-Currently, we support only Windows and Linux.
+## Installation
+
+There are two ways of obtaining and installing RetDec:
+1. Download and unpack a pre-built [stable](https://github.com/avast/retdec/releases) or [bleeding-edge](https://github.com/avast/retdec#automated-teamcity-builds) package and follow instructions in the _Use_ section of its `retdec/share/retdec/README.md` file after unpacking.
+2. Build RetDec by yourself from sources by following the [Build and Installation](#build-and-installation) section. After installation, follow instructions below.
+
+We currently support Windows (7 or later), Linux, macOS, and (experimentally) FreeBSD. An installed version of RetDec requires approximately 5 to 6 GB of free disk space.
+
+## Use
+
+Please, ensure that you reading instructions corresponding to the used RetDec version. If unsure, refer to the `retdec/share/retdec/README.md` file in the installation.
 
 ### Windows
 
-1. Either download and unpack a pre-built package from the following list, or build and install the decompiler by yourself (the process is described below):
+1. After [installing RetDec](#installation), install [Microsoft Visual C++ Redistributable for Visual Studio 2017](https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads).
 
-    * [32b Windows](https://github.com/avast-tl/retdec/releases/download/v3.0/retdec-v3.0-windows-32b.zip) (v3.0)
-    * [64b Windows](https://github.com/avast-tl/retdec/releases/download/v3.0/retdec-v3.0-windows-64b.zip) (v3.0)
+2. Install the following programs:
 
-2. Install [Microsoft Visual C++ Redistributable for Visual Studio 2015](https://www.microsoft.com/en-us/download/details.aspx?id=48145).
+    * [UPX](https://upx.github.io/) (Optional: if you want to use UPX unpacker in the preprocessing stage)
+    * [Graphviz](https://graphviz.gitlab.io/_pages/Download/windows/graphviz-2.38.msi) (Optional: if you want to generate call or control flow graphs)
 
-3. Install [MSYS2](http://www.msys2.org/) and other needed applications by following RetDec's [Windows environment setup guide](https://github.com/avast-tl/retdec/wiki/Windows-Environment).
-
-3. Now, you are all set to run the decompiler. To decompile a binary file named `test.exe`, go into `$RETDEC_INSTALLED_DIR/bin` and run:
+3. To decompile a binary file named `test.exe`, run
 
     ```
-    bash decompile.sh test.exe
+    $RETDEC_INSTALL_DIR\bin\retdec-decompiler.exe test.exe
     ```
 
-   For more information, run `bash decompile.sh --help`.
+   For more information, run `retdec-decompiler.exe` with `--help`.
 
 ### Linux
 
-1. There are currently no pre-built packages for Linux. You will have to build and install the decompiler by yourself. The process is described below.
+1. After [installing RetDec](#installation), install the following packages via your distribution's package manager:
 
-2. After you have built the decompiler, you will need to install the following packages via your distribution's package manager:
+    * [UPX](https://upx.github.io/) (Optional: if you want to use UPX unpacker in the preprocessing stage)
+    * [Graphviz](http://www.graphviz.org/) (Optional: if you want to generate call or control flow graphs)
 
-    * [GNU Bash](https://www.gnu.org/software/bash/)
-    * [UPX](https://upx.github.io/)
-    * [bc](https://www.gnu.org/software/bc/)
-    * [Graphviz](http://www.graphviz.org/)
-
-3. Now, you are all set to run the decompiler. To decompile a binary file named `test.exe`, go into `$RETDEC_INSTALLED_DIR/bin` and run:
+2. To decompile a binary file named `test.exe`, run
 
     ```
-    ./decompile.sh test.exe
+    $RETDEC_INSTALL_DIR/bin/retdec-decompiler test.exe
     ```
 
-   For more information, run `./decompile.sh --help`.
+   For more information, run `retdec-decompiler` with `--help`.
+
+### macOS
+
+1. After [installing RetDec](#installation), install the following packages:
+
+    * [UPX](https://upx.github.io/) (Optional: if you want to use UPX unpacker in the preprocessing stage)
+    * [Graphviz](http://www.graphviz.org/) (Optional: if you want to generate call or control flow graphs)
+
+2. To decompile a binary file named `test.exe`, run
+
+    ```
+    $RETDEC_INSTALL_DIR/bin/retdec-decompiler test.exe
+    ```
+
+   For more information, run `retdec-decompiler` with `--help`.
+
+### FreeBSD (Experimental)
+
+1. There are currently no pre-built "ports" packages for FreeBSD. You will have to build and install the decompiler by yourself. The process is described below.
+
+2. To decompile a binary file named `test.exe`, run
+
+    ```
+    $RETDEC_INSTALL_DIR/bin/retdec-decompiler test.exe
+    ```
+
+   For more information, run `retdec-decompiler` with `--help`.
+
+### Use of RetDec libraries
+
+As of RetDec version 4.0 you can easily use various RetDec libraries in your projects - if they are build with CMake. RetDec installation contains all the necessary headers, libraries, and CMake scripts.
+
+If you installed RetDec into a standard installation location of your system (e.g. `/usr`, `/usr/local`), all you need to do in order to use its components is:
+
+```cmake
+find_package(retdec 4.0 REQUIRED
+   COMPONENTS
+      <component>
+      [...]
+)
+target_link_libraries(your-project
+   PUBLIC
+      retdec::<component>
+      [...]
+)
+```
+
+If you did not install RetDec somewhere where it can be automatically discovered, you need to help CMake find it before `find_package()` is used. There are generally two ways to do it (pick & use only one):
+
+1. Add the RetDec installation directory to [`CMAKE_PREFIX_PATH`](https://cmake.org/cmake/help/latest/variable/CMAKE_PREFIX_PATH.html):
+    ```cmake
+    list(APPEND CMAKE_PREFIX_PATH ${RETDEC_INSTALL_DIR})
+    ```
+
+2. Set the path to installed RetDec CMake scripts to `retdec_DIR`:
+    ```cmake
+    set(retdec_DIR ${RETDEC_INSTALL_DIR}/share/retdec/cmake)
+    ```
+
+See the [Repository Overview](https://github.com/avast/retdec/wiki/Repository-Overview) wiki page for the list of available RetDec components, or the [retdec-build-system-tests](https://github.com/avast/retdec-build-system-tests) for demos on how to use them.
 
 ## Build and Installation
 
-This section describes a manual build and installation of RetDec.
+This section describes a local build and installation of RetDec. Instructions for Docker are given in the next section.
 
 ### Requirements
 
-* Linux:
-  * A compiler supporting C++14
-  * [CMake](https://cmake.org/) (version >= 3.6)
-  * [Perl](https://www.perl.org/)
-  * standard tools (e.g. `sh`, `wget`, `sha256sum`)
+#### Linux
 
-On Ubuntu 16.04 and 18.04, the required packages can be installed with apt-get.
+* A C++ compiler and standard C++ library supporting C++17 (e.g. GCC >= 7)
+* [CMake](https://cmake.org/) (version >= 3.6)
+* [Git](https://git-scm.com/)
+* [OpenSSL](https://www.openssl.org/) (version >= 1.1.1)
+* [Python](https://www.python.org/) (version >= 3.4)
+* [autotools](https://en.wikipedia.org/wiki/GNU_Build_System) ([autoconf](https://www.gnu.org/software/autoconf/autoconf.html), [automake](https://www.gnu.org/software/automake/), and [libtool](https://www.gnu.org/software/libtool/))
+* [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/)
+* [m4](https://www.gnu.org/software/m4/m4.html)
+* [zlib](http://zlib.net/)
+* Optional: [Doxygen](http://www.stack.nl/~dimitri/doxygen/) and [Graphviz](http://www.graphviz.org/) for generating API documentation
+
+On Debian-based distributions (e.g. Ubuntu), the required packages can be installed with `apt-get`:
 
 ```sh
-sudo apt-get install build-essential git bc graphviz upx cmake python zlib1g-dev flex bison libtinfo-dev autoconf pkg-config m4 libtool wget
+sudo apt-get install build-essential cmake git openssl libssl-dev python3 autoconf automake libtool pkg-config m4 zlib1g-dev upx doxygen graphviz
 ```
 
-* Windows:
-  * Microsoft Visual C++ (version >= Visual Studio 2015 Update 2)
-  * [MSYS2](http://www.msys2.org/) and some other applications. Follow RetDec's [Windows environment setup guide](https://github.com/avast-tl/retdec/wiki/Windows-Environment) to get everything you need on Windows.
-  * [Active Perl](https://www.activestate.com/activeperl). It needs to be the first Perl in `PATH`, or it has to be provided to CMake using `CMAKE_PROGRAM_PATH` variable, e.g. `-DCMAKE_PROGRAM_PATH=/c/perl/bin`.
+On RPM-based distributions (e.g. Fedora), the required packages can be installed with `dnf`:
+
+```sh
+sudo dnf install gcc gcc-c++ cmake make git openssl openssl-devel python3 autoconf automake libtool pkg-config m4 zlib-devel upx doxygen graphviz
+```
+
+On Arch Linux, the required packages can be installed with `pacman`:
+
+```sh
+sudo pacman --needed -S base-devel cmake git openssl python3 autoconf automake libtool pkg-config m4 zlib upx doxygen graphviz
+```
+
+#### Windows
+
+* Microsoft Visual C++ (version >= Visual Studio 2017 version 15.7)
+* [CMake](https://cmake.org/) (version >= 3.6)
+* [Git](https://git-scm.com/)
+* [OpenSSL](https://www.openssl.org/) (version >= 1.1.1)
+* [Python](https://www.python.org/) (version >= 3.4)
+* Optional: [Doxygen](http://ftp.stack.nl/pub/users/dimitri/doxygen-1.8.13-setup.exe) and [Graphviz](https://graphviz.gitlab.io/_pages/Download/windows/graphviz-2.38.msi) for generating API documentation
+
+#### macOS
+
+Packages should be preferably installed via [Homebrew](https://brew.sh).
+
+* macOS >= 10.15
+* Full Xcode installation ([including command-line tools](https://github.com/frida/frida/issues/338#issuecomment-426777849), see [#425](https://github.com/avast/retdec/issues/425) and [#433](https://github.com/avast/retdec/issues/433))
+* [CMake](https://cmake.org/) (version >= 3.6)
+* [Git](https://git-scm.com/)
+* [OpenSSL](https://www.openssl.org/) (version >= 1.1.1)
+* [Python](https://www.python.org/) (version >= 3.4)
+* [autotools](https://en.wikipedia.org/wiki/GNU_Build_System) ([autoconf](https://www.gnu.org/software/autoconf/autoconf.html), [automake](https://www.gnu.org/software/automake/), and [libtool](https://www.gnu.org/software/libtool/))
+* Optional: [Doxygen](http://www.stack.nl/~dimitri/doxygen/) and [Graphviz](http://www.graphviz.org/) for generating API documentation
+
+#### FreeBSD (Experimental)
+
+Packages should be installed via FreeBSDs pre-compiled package repository using the `pkg` command or built from scratch using the `ports` database method.
+
+* Full "pkg" tool instructions: [handbook pkg method](https://www.freebsd.org/doc/handbook/pkgng-intro.html)
+  * `pkg install cmake python37 git autotools`
+OR
+* Full "ports" instructions: [handbook ports method](https://www.freebsd.org/doc/handbook/ports-using.html)
+  * `portsnap fetch`
+  * `portsnap extract`
+* For example, `cmake` would be
+  * `whereis cmake`
+  * `cd /usr/ports/devel/cmake`
+  * `make install clean`
 
 ### Process
 
-**Warning: Currently, RetDec has to be installed into a clean, dedicated directory. Do NOT install it into `/usr`, `/usr/local`, etc. because our build system is not yet ready for system-wide installations. So, when running `cmake`, always set `-DCMAKE_INSTALL_PREFIX=<path>` to a directory that will be used just by RetDec. For more details, see #12.**
+Note: Although RetDec now supports a system-wide installation ([#94](https://github.com/avast/retdec/issues/94)), unless you use your distribution's package manager to install it, we recommend installing RetDec locally into a designated directory. The reason for this is that uninstallation will be easier as you will only need to remove a single directory. To perform a local installation, run `cmake` with the `-DCMAKE_INSTALL_PREFIX=<path>` parameter, where `<path>` is directory into which RetDec will be installed (e.g. `$HOME/projects/retdec-install` on Linux and macOS, and `C:\projects\retdec-install` on Windows).
 
-* Recursively clone the repository (it contains submodules):
-  * `git clone --recursive https://github.com/avast-tl/retdec`
+* Clone the repository:
+  * `git clone https://github.com/avast/retdec`
 * Linux:
   * `cd retdec`
   * `mkdir build && cd build`
   * `cmake .. -DCMAKE_INSTALL_PREFIX=<path>`
-  * `make && make install`
+  * `make -jN` (`N` is the number of processes to use for parallel build, typically number of cores + 1 gives fastest compilation time)
+  * `make install`
 * Windows:
-  * Open MSBuild command prompt, or any terminal that is configured to run the `msbuild` command.
+  * Open a command prompt (e.g. `cmd.exe`)
   * `cd retdec`
   * `mkdir build && cd build`
   * `cmake .. -DCMAKE_INSTALL_PREFIX=<path> -G<generator>`
-  * `msbuild /m /p:Configuration=Release retdec.sln`
-  * `msbuild /m /p:Configuration=Release INSTALL.vcxproj`
-  * Alternatively, you can open `retdec.sln` generated by `cmake` in Visual Studio IDE.
+  * `cmake --build . --config Release -- -m`
+  * `cmake --build . --config Release --target install`
+  * Alternatively, you can open `retdec.sln` generated by `cmake` in Visual Studio IDE
+* macOS:
+  * `cd retdec`
+  * `mkdir build && cd build`
+  * `cmake .. -DCMAKE_INSTALL_PREFIX=<path>`
+  * `make -jN` (`N` is the number of processes to use for parallel build, typically number of cores + 1 gives fastest compilation time)
+  * `make install`
+* FreeBSD:
+  * `sudo pkg install git cmake`
+  * `git clone https://github.com/avast/retdec`
+  * `cd retdec`
+  * `mkdir build && cd build`
+  * ```sh
+    # FreeBSD (and other BSDs) do need cmake, python3, git, autotools. OpenSSL is pre-installed in the OS but check its version.
+    # Later versions may be available for each of the packages.
+    # See what is installed:
+    sudo pkg info cmake python37 autotools
+    # Install/upgrade them:
+    sudo pkg install cmake python37 autotools
+    ```
+  * `cmake .. -DCMAKE_INSTALL_PREFIX=<path>`
+  * `make -jN` (`N` is the number of processes to use for parallel build, typically number of cores + 1 gives fastest compilation time)
+  * `make install`
 
 You have to pass the following parameters to `cmake`:
-* `-DCMAKE_INSTALL_PREFIX=<path>` to set the installation path to `<path>`.
-* (Windows only) `-G<generator>` is `-G"Visual Studio 14 2015"` for 32-bit build using Visual Studio 2015, or `-G"Visual Studio 14 2015 Win64"` for 64-bit build using Visual Studio 2015. Later versions of Visual Studio may be used.
+* `-DCMAKE_INSTALL_PREFIX=<path>` to set the installation path to `<path>`. Quote the path if you are using backslashes on Windows (e.g. `-DCMAKE_INSTALL_PREFIX="C:\retdec"`).
+* (Windows only) `-G<generator>` is `-G"Visual Studio 15 2017"` for 32-bit build using Visual Studio 2017, or `-G"Visual Studio 15 2017 Win64"` for 64-bit build using Visual Studio 2017. Later versions of Visual Studio may be used.
 
 You can pass the following additional parameters to `cmake`:
 * `-DRETDEC_DOC=ON` to build with API documentation (requires Doxygen and Graphviz, disabled by default).
-* `-DRETDEC_TESTS=ON` to build with tests, including all the tests in dependency submodules (disabled by default).
-* `-DCMAKE_BUILD_TYPE=Debug` to build with debugging information, which is useful during development. By default, the project is built in the `Release` mode. This has no effect on Windows, but the same thing can be achieved by running `msbuild` with the `/p:Configuration=Debug` parameter.
-* `-DCMAKE_PROGRAM_PATH=<path>` to use Perl at `<path>` (probably useful only on Windows).
+* `-DRETDEC_TESTS=ON` to build with tests (disabled by default).
+* `-DRETDEC_DEV_TOOLS=ON` to build with development tools (disabled by default).
+* `-DRETDEC_COMPILE_YARA=OFF` to disable YARA rules compilation at installation step (enabled by default).
+* `-DCMAKE_BUILD_TYPE=Debug` to build with debugging information, which is useful during development. By default, the project is built in the `Release` mode. This has no effect on Windows, but the same thing can be achieved by running `cmake --build .` with the `--config Debug` parameter.
+* `-D<dep>_LOCAL_DIR=<path>` where `<dep>` is from `{CAPSTONE, GOOGLETEST, KEYSTONE, LLVM, YARA, YARAMOD}` (e.g. `-DCAPSTONE_LOCAL_DIR=<path>`), to use the local repository clone at `<path>` for RetDec dependency instead of downloading a fresh copy at build time. Multiple such options may be used at the same time.
+* `-DRETDEC_ENABLE_<component>=ON` to build only the specified component(s) (multiple such options can be used at once), and its (theirs) dependencies. By default, all the components are built. If at least one component is enabled via this mechanism, all the other components that were not explicitly enabled (and are not needed as dependencies of enabled components) are not built. See [cmake/options.cmake](https://github.com/avast/retdec/blob/master/cmake/options.cmake) for all the available component options.
+  * `-DRETDEC_ENABLE_ALL=ON` can be used to (re-)enable all the components.
+  * Alternatively, `-DRETDEC_ENABLE=<comma-separated component list>` can be used instead of `-DRETDEC_ENABLE_<component>=ON` (e.g. `-DRETDEC_ENABLE=fileformat,loader,ctypesparser` is equivalent to `-DRETDEC_ENABLE_FILEFORMAT=ON -DRETDEC_ENABLE_LOADER=ON -DRETDEC_ENABLE_CTYPESPARSER=ON`).
 
-## Repository Overview
+## Build in Docker
 
-This repository contains the following libraries:
-* `bin2llvmir` -- library of LLVM passes for translating binaries into LLVM IR modules.
-* `debugformat` -- library for uniform representation of DWARF and PDB debugging information.
-* `dwarfparser` -- library for high-level representation of DWARF debugging information.
-* `llvm-support` -- set of LLVM related utility functions.
-* `llvmir2hll` -- library for translating LLVM IR modules to high-level source codes (C, Python-like language).
+Docker support is maintained by community. If something does not work for you or if you have suggestions for improvements, open an issue or PR.
 
-This repository contains the following tools:
-* `bin2llvmirtool` -- frontend for the `bin2llvmir` library.
-* `llvm2hlltool` -- frontend for the `llvmir2hll` library.
+### Build Image
 
-This repository contains the following scripts:
-* `decompile.sh` -- the main decompilation script binding it all together. This is the tool to use for full binary-to-C decompilations.
-* Support scripts used by `decompile.sh`:
-  * `color-c.py` -- decorates output C sources with IDA color tags -- syntax highlighting for IDA.
-  * `config.sh` -- decompiler's configuration file.
-  * `decompile-archive.sh` -- decompiles objects in the given AR archive.
-  * `fileinfo.sh` -- a Fileinfo tool wrapper.
-  * `signature-from-library.sh` -- extracts function signatures from the given library.
-  * `unpack.sh` -- tries to unpack the given executable file by using any of the supported unpackers.
-* Other utility scripts:
-  * `decompile-all.sh` -- decompiles all executables in the given directory and subdirectories.
-  * `run-unit-test.sh` -- run all tests in the unit test directory.
-  * `utils.sh` -- a collection of bash utilities.
+Building in Docker does not require installation of the required libraries locally. This is a good option for trying out RetDec without setting up the whole build toolchain.
 
-## Related repositories
+To build the RetDec Docker image, run
+```
+docker build -t retdec - < Dockerfile
+```
 
-* [RetDec IDA plugin](https://github.com/avast-tl/retdec-idaplugin) -- embeds RetDec into IDA (Interactive Disassembler) and makes its use much easier.
-* [RetDec Regression Tests](https://github.com/avast-tl/retdec-regression-tests-framework) -- provides means to run and create regression tests for RetDec and related tools. This is a must if you plan to contribute to the RetDec project.
+This builds the image from the master branch of this repository.
+
+To build the image using the local copy of the repository, use the development Dockerfile, `Dockerfile.dev`:
+```
+docker build -t retdec:dev . -f Dockerfile.dev
+```
+
+### Run Container
+
+If your `uid` is not 1000, make sure that the directory containing your input binary files is accessible for RetDec:
+```
+chmod 0777 /path/to/local/directory
+```
+Now, you can run the decompiler inside a container:
+```
+docker run --rm -v /path/to/local/directory:/destination retdec retdec-decompiler /destination/binary
+```
+Note: Do not modify the `/destination` part is. You only need to change `/path/to/local/directory`. Output files will then be generated to `/path/to/local/directory`.
+
+## Automated TeamCity Builds
+
+Our TeamCity servers are continuously generating up-to-date RetDec packages from the latest commit in the `master` branch. These are mostly meant to be used by RetDec developers, contributors, and other people experimenting with the product (e.g. testing if an issue present in the official release still exists in the current `master`).
+
+You can use these as you wish, but keep in mind that there are no guarantees they will work on your system (especially the Linux version), and that regressions are a possibility. To get a stable RetDec version, either download the latest official pre-built package or build the latest RetDec version tag.
+
+* [Windows Server 2016, version 10.0](https://retdec-tc.avast.com/repository/download/Retdec_WinBuild/.lastSuccessful/package/retdec-master-windows-64b.7z?guest=1)
+* [Ubuntu Bionic Linux, version 18.04](https://retdec-tc.avast.com/repository/download/RetDec_LinuxBuild/.lastSuccessful/package/retdec-master-linux-64b.tar.xz?guest=1)
+* [Mac OS X, version 10.14.6](https://retdec-tc.avast.com/repository/download/Retdec_MacBuild/.lastSuccessful/package/retdec-master-macos-64b.tar.xz?guest=1)
+
+## Project Documentation
+
+See the [project documentation](https://retdec-tc.avast.com/repository/download/Retdec_DoxygenBuild/.lastSuccessful/build/doc/doxygen/html/index.html?guest=1) for an up to date Doxygen-generated software reference corresponding to the latest commit in the `master` branch.
+
+## Related Repositories
+
+* [retdec-idaplugin](https://github.com/avast/retdec-idaplugin) -- Embeds RetDec into IDA (Interactive Disassembler) and makes its use much easier.
+* [retdec-r2plugin](https://github.com/avast/retdec-r2plugin) -- Embeds RetDec into Radare2 and makes its use much easier.
+* [retdec-regression-tests-framework](https://github.com/avast/retdec-regression-tests-framework) -- A framework for writing and running regression tests for RetDec and related tools. This is a must if you plan to contribute to the RetDec project.
+* [retdec-regression-tests](https://github.com/avast/retdec-regression-tests) -- A suite of regression tests for RetDec and related tools.
+* [retdec-build-system-tests](https://github.com/avast/retdec-build-system-tests) -- A suite of tests for RetDec's build system. This can also serve as a collection of demos on how to use RetDec libraries.
+* [vim-syntax-retdecdsm](https://github.com/s3rvac/vim-syntax-retdecdsm) -- Vim syntax-highlighting file for the output from the RetDec's disassembler (`.dsm` files).
 
 ## License
 
-Copyright (c) 2017 Avast Software, licensed under the MIT license. See the `LICENSE` file for more details.
+Copyright (c) 2017 Avast Software, licensed under the MIT license. See the [`LICENSE`](https://github.com/avast/retdec/blob/master/LICENSE) file for more details.
 
-RetDec uses third-party libraries or other resources listed, along with their licenses, in the `LICENSE-THIRD-PARTY` file.
+RetDec incorporates a modified PeLib library. New modules added by Avast Software are licensed under the MIT license. The original sources are licensed under the following license:
+* Copyright (c) 2004 - 2005 Sebastian Porst (webmaster@the-interweb.com), licensed under the zlib/libpng License. See the [`LICENSE-PELIB`](https://github.com/avast/retdec/blob/master/LICENSE-PELIB) file for more details.
+
+RetDec uses third-party libraries or other resources listed, along with their licenses, in the [`LICENSE-THIRD-PARTY`](https://github.com/avast/retdec/blob/master/LICENSE-THIRD-PARTY) file.
 
 ## Contributing
 
-See [RetDec contribution guidelines](https://github.com/avast-tl/retdec/wiki/Contribution-Guidelines).
+See [RetDec contribution guidelines](https://github.com/avast/retdec/wiki/Contribution-Guidelines).
 
 ## Acknowledgements
 

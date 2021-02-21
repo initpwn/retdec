@@ -7,18 +7,21 @@
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/InstIterator.h>
 
-#include "llvm-support/utils.h"
-#include "tl-cpputils/container.h"
-#include "bin2llvmir/providers/asm_instruction.h"
-#include "bin2llvmir/providers/config.h"
-#include "bin2llvmir/utils/type.h"
+#include "retdec/utils/container.h"
+#include "retdec/utils/string.h"
+#include "retdec/bin2llvmir/providers/asm_instruction.h"
+#include "retdec/bin2llvmir/providers/names.h"
+#include "retdec/bin2llvmir/utils/debug.h"
+#include "retdec/bin2llvmir/utils/ir_modifier.h"
+#include "retdec/bin2llvmir/utils/llvm.h"
 
-using namespace llvm_support;
 using namespace llvm;
 
+namespace retdec {
 namespace bin2llvmir {
 
-std::vector<std::pair<const llvm::Module*, const llvm::GlobalVariable*>> AsmInstruction::_cache;
+std::vector<AsmInstruction::ModuleGlobalPair> AsmInstruction::_module2global;
+std::vector<AsmInstruction::ModuleInstructionMap> AsmInstruction::_module2instMap;
 
 AsmInstruction::AsmInstruction()
 {
@@ -85,7 +88,7 @@ AsmInstruction::AsmInstruction(llvm::Function* f)
 	}
 }
 
-AsmInstruction::AsmInstruction(llvm::Module* m, tl_cpputils::Address addr)
+AsmInstruction::AsmInstruction(llvm::Module* m, retdec::common::Address addr)
 {
 	if (m == nullptr)
 	{
@@ -180,48 +183,125 @@ const llvm::GlobalVariable* AsmInstruction::getLlvmToAsmGlobalVariablePrivate(
 	}
 }
 
-const llvm::GlobalVariable* AsmInstruction::getLlvmToAsmGlobalVariable(
+Llvm2CapstoneInsnMap& AsmInstruction::getLlvmToCapstoneInsnMap(
 		const llvm::Module* m)
 {
-	if (m == nullptr)
-	{
-		return nullptr;
-	}
-	for (auto& p : _cache)
+	for (auto& p : _module2instMap)
 	{
 		if (p.first == m)
 		{
 			return p.second;
 		}
 	}
-	auto* nmd = m->getNamedMetadata("llvmToAsmGlobalVariableName");
-	if (nmd == nullptr || nmd->getNumOperands() != 1)
-	{
-		return nullptr;
-	}
-	auto* md = nmd->getOperand(0);
-	if (md == nullptr
-			|| md->getNumOperands() != 1
-			|| !isa<MDString>(md->getOperand(0)))
-	{
-		return nullptr;
-	}
-	auto* ms = cast<MDString>(md->getOperand(0));
-	auto* gv = m->getNamedGlobal(ms->getString());
-	_cache.push_back(std::make_pair(m, gv));
-	return gv;
+
+	auto it = _module2instMap.emplace(_module2instMap.end(), std::make_pair(
+			m,
+			std::map<llvm::StoreInst*, cs_insn*>()));
+	return it->second;
 }
 
-tl_cpputils::Address AsmInstruction::getInstructionAddress(
+llvm::GlobalVariable* AsmInstruction::getLlvmToAsmGlobalVariable(
+		const llvm::Module* m)
+{
+	for (auto& p : _module2global)
+	{
+		if (p.first == m)
+		{
+			return p.second;
+		}
+	}
+	return nullptr;
+}
+
+void AsmInstruction::setLlvmToAsmGlobalVariable(
+		const llvm::Module* m,
+		llvm::GlobalVariable* gv)
+{
+	_module2global.emplace_back(m, gv);
+}
+
+retdec::common::Address AsmInstruction::getInstructionAddress(
 		llvm::Instruction* inst)
 {
-	tl_cpputils::Address ret;
+	retdec::common::Address ret;
 	AsmInstruction ai(inst);
 	if (ai.isValid())
 	{
 		ret = ai.getAddress();
 	}
 	return ret;
+}
+
+retdec::common::Address AsmInstruction::getInstructionEndAddress(
+		llvm::Instruction* inst)
+{
+	retdec::common::Address ret;
+	AsmInstruction ai(inst);
+	if (ai.isValid())
+	{
+		ret = ai.getEndAddress();
+	}
+	return ret;
+}
+
+retdec::common::Address AsmInstruction::getBasicBlockAddress(
+		llvm::BasicBlock* bb)
+{
+	return bb->empty()
+			? retdec::common::Address()
+			: getInstructionAddress(&bb->front());
+}
+
+retdec::common::Address getBasicBlockAddressFromName(llvm::BasicBlock* b)
+{
+	std::string n = b->getName();
+	unsigned long long a = 0;
+	std::string pattern = names::generatedBasicBlockPrefix+"%llx";
+	int ret = std::sscanf(n.c_str(), pattern.c_str(), &a);
+	return ret == 1 ? common::Address(a) : common::Address();
+}
+
+// TODO: not ideal, returns only for BBs with specific names.
+retdec::common::Address AsmInstruction::getTrueBasicBlockAddress(
+		llvm::BasicBlock* bb)
+{
+	std::string n = bb->getName();
+	if (!retdec::utils::startsWith(n, names::generatedBasicBlockPrefix))
+	{
+		return common::Address();
+	}
+
+	if (bb->empty())
+	{
+		return getBasicBlockAddressFromName(bb);
+	}
+
+	AsmInstruction ai(&bb->front());
+	return ai.isValid() ? ai.getAddress() : getBasicBlockAddressFromName(bb);
+}
+
+retdec::common::Address AsmInstruction::getBasicBlockEndAddress(
+		llvm::BasicBlock* bb)
+{
+	return bb->empty()
+			? getBasicBlockAddress(bb)
+			: getInstructionEndAddress(&bb->back());
+}
+
+retdec::common::Address AsmInstruction::getFunctionAddress(
+		llvm::Function* f)
+{
+	return f->empty()
+			? retdec::common::Address()
+			: getBasicBlockAddress(&f->front());
+}
+
+retdec::common::Address AsmInstruction::getFunctionEndAddress(
+		llvm::Function* f)
+{
+	return f->empty() || f->back().empty()
+			? getFunctionAddress(f)
+			: getBasicBlockEndAddress(&f->back());
 }
 
 bool AsmInstruction::isLlvmToAsmInstructionPrivate(llvm::Value* inst) const
@@ -248,7 +328,8 @@ bool AsmInstruction::isLlvmToAsmInstruction(const llvm::Value* inst)
 
 void AsmInstruction::clear()
 {
-	_cache.clear();
+	_module2global.clear();
+	_module2instMap.clear();
 }
 
 bool AsmInstruction::isValid() const
@@ -263,46 +344,16 @@ bool AsmInstruction::isInvalid() const
 
 cs_insn* AsmInstruction::getCapstoneInsn() const
 {
-	cs_insn* i = nullptr;
-
-	if (auto* m = _llvmToAsmInstr->getMetadata("asm"))
+	for (auto& p : _module2instMap)
 	{
-		auto* ms = cast<ConstantAsMetadata>(m->getOperand(0));
-		auto* ci = cast<ConstantInt>(ms->getValue());
-		i = reinterpret_cast<cs_insn*>(ci->getZExtValue());
-	}
-
-	return i;
-}
-
-bool AsmInstruction::isThumb() const
-{
-	cs_insn* ci = getCapstoneInsn();
-	if (ci == nullptr)
-	{
-		return false;
-	}
-
-	for (auto g : ci->detail->groups)
-	{
-		if (g == ARM_GRP_THUMB2DSP
-				|| g == ARM_GRP_THUMB
-				|| g == ARM_GRP_THUMB1ONLY
-				|| g == ARM_GRP_THUMB2)
+		if (p.first == _llvmToAsmInstr->getModule())
 		{
-			return true;
+			auto it =  p.second.find(_llvmToAsmInstr);
+			return it != p.second.end() ? it->second : nullptr;
 		}
 	}
 
-	return false;
-}
-
-bool AsmInstruction::isConditional(Config* conf) const
-{
-	auto* i = getCapstoneInsn();
-	return conf && conf->getConfig().architecture.isArmOrThumb() && i
-			? i->detail->arm.cc != ARM_CC_AL && i->detail->arm.cc != ARM_CC_INVALID
-			: false;
+	return nullptr;
 }
 
 std::string AsmInstruction::getDsm() const
@@ -313,18 +364,10 @@ std::string AsmInstruction::getDsm() const
 
 std::size_t AsmInstruction::getByteSize() const
 {
-//	assert(isValid());
-//	auto* m = _llvmToAsmInstr->getMetadata("asm");
-//	auto* mi = mdconst::dyn_extract<ConstantInt>(m->getOperand(2));
-//	return mi->getZExtValue();
-
-//	assert(false && "AsmInstruction::getByteSize() not implemented.");
-//	return 0;
-
 	return getCapstoneInsn()->size;
 }
 
-tl_cpputils::Address AsmInstruction::getAddress() const
+retdec::common::Address AsmInstruction::getAddress() const
 {
 	assert(isValid());
 	auto* ci = dyn_cast<ConstantInt>(_llvmToAsmInstr->getValueOperand());
@@ -332,7 +375,7 @@ tl_cpputils::Address AsmInstruction::getAddress() const
 	return ci->getZExtValue();
 }
 
-tl_cpputils::Address AsmInstruction::getEndAddress() const
+retdec::common::Address AsmInstruction::getEndAddress() const
 {
 	assert(isValid());
 	return getAddress() + getByteSize();
@@ -344,21 +387,14 @@ std::size_t AsmInstruction::getBitSize() const
 	return getByteSize() * 8;
 }
 
-bool AsmInstruction::contains(tl_cpputils::Address addr) const
+bool AsmInstruction::contains(retdec::common::Address addr) const
 {
-	return isValid() ? getAddress() <= addr && addr <= getEndAddress() : false;
+	return isValid() ? getAddress() <= addr && addr < getEndAddress() : false;
 }
 
 llvm::StoreInst* AsmInstruction::getLlvmToAsmInstruction() const
 {
 	return _llvmToAsmInstr;
-}
-
-tl_cpputils::Maybe<unsigned> AsmInstruction::getLatency() const
-{
-	assert(false && "AsmInstruction::getLatency() not implemented.");
-	tl_cpputils::Maybe<unsigned> ret;
-	return ret;
 }
 
 /**
@@ -442,7 +478,7 @@ bool AsmInstruction::instructionsCanBeErased()
 {
 	auto bbs = getBasicBlocks();
 
-	tl_cpputils::NonIterableSet<const Value*> seen;
+	retdec::utils::NonIterableSet<const Value*> seen;
 	for (auto it = rbegin(), e = rend(); it != e; ++it)
 	{
 		auto* i = &(*it);
@@ -530,8 +566,8 @@ bool AsmInstruction::eraseInstructions()
 		Value* retVal = nullptr;
 		if (!genRet->getReturnType()->isVoidTy())
 		{
-			auto* ci = ConstantInt::get(getDefaultType(m), 0);
-			retVal = convertConstantToType(ci, genRet->getReturnType());
+			auto* ci = ConstantInt::get(Abi::getDefaultType(m), 0);
+			retVal = IrModifier::convertConstantToType(ci, genRet->getReturnType());
 		}
 
 		auto* ret = ReturnInst::Create(m->getContext(), retVal);
@@ -543,14 +579,14 @@ bool AsmInstruction::eraseInstructions()
 
 /**
  * Make this ASM instruction terminal -- last in BB, ending with
- * @c TerminatorInst.
+ * terminator @c Instruction.
  * If it already is terminal, nothing is modified and an existing terminator is
  * returned.
  * If it is not terminal yet, BB is split on the next ASM instruction, this
  * instruction ends with an unconditional branch to the new BB, and this branch
  * is returned.
  */
-llvm::TerminatorInst* AsmInstruction::makeTerminal()
+llvm::Instruction* AsmInstruction::makeTerminal()
 {
 	auto next = getNext();
 	if (next.isValid())
@@ -562,17 +598,17 @@ llvm::TerminatorInst* AsmInstruction::makeTerminal()
 		{
 			next.getBasicBlock()->splitBasicBlock(
 					next.getLlvmToAsmInstruction(),
-					next.getBasicBlockLableName());
-			auto* b = dyn_cast_or_null<TerminatorInst>(back());
-			assert(b);
+					names::generateBasicBlockName(next.getAddress()));
+			auto* b = dyn_cast_or_null<Instruction>(back());
+			assert(b->isTerminator());
 			return b;
 		}
 		// Next in different BB -> no need to split -> ends with terminator.
 		//
 		else
 		{
-			auto* b = dyn_cast_or_null<TerminatorInst>(back());
-			assert(b);
+			auto* b = dyn_cast_or_null<Instruction>(back());
+			assert(b->isTerminator());
 			return b;
 		}
 	}
@@ -580,8 +616,8 @@ llvm::TerminatorInst* AsmInstruction::makeTerminal()
 	//
 	else
 	{
-		auto* b = dyn_cast_or_null<TerminatorInst>(back());
-		assert(b);
+		auto* b = dyn_cast_or_null<Instruction>(back());
+		assert(b->isTerminator());
 		return b;
 	}
 }
@@ -591,18 +627,21 @@ llvm::TerminatorInst* AsmInstruction::makeTerminal()
  * If it already is first, nothing is modified and an existing BB is returned.
  * If it is not first yet, split BB on it to create a new BB
  */
-llvm::BasicBlock* AsmInstruction::makeStart()
+llvm::BasicBlock* AsmInstruction::makeStart(const std::string& name)
 {
 	// No previous node -> first in BB.
 	//
 	if (_llvmToAsmInstr->getPrevNode() == nullptr)
 	{
+		getBasicBlock()->setName(name.empty()
+				? names::generateBasicBlockName(getAddress())
+				: name);
 		return getBasicBlock();
 	}
 
 	return getBasicBlock()->splitBasicBlock(
 			_llvmToAsmInstr,
-			getBasicBlockLableName());
+			name.empty() ? names::generateBasicBlockName(getAddress()) : name);
 }
 
 /**
@@ -621,6 +660,24 @@ llvm::BasicBlock* AsmInstruction::getBasicBlock() const
 llvm::Function* AsmInstruction::getFunction() const
 {
 	return _llvmToAsmInstr ? _llvmToAsmInstr->getFunction() : nullptr;
+}
+
+/**
+ * @return Module where LLVM to ASM instruction belongs, or @c nullptr
+ *         if ASM instruction not valid.
+ */
+llvm::Module* AsmInstruction::getModule() const
+{
+	return _llvmToAsmInstr ? _llvmToAsmInstr->getModule() : nullptr;
+}
+
+/**
+ * @return Context where LLVM to ASM instruction belongs
+ *         Use only on valid assembly instructions.
+ */
+llvm::LLVMContext& AsmInstruction::getContext() const
+{
+	return _llvmToAsmInstr->getContext();
 }
 
 std::vector<llvm::Instruction*> AsmInstruction::getInstructions()
@@ -644,14 +701,6 @@ std::vector<llvm::BasicBlock*> AsmInstruction::getBasicBlocks()
 		}
 	}
 	return ret;
-}
-
-std::string AsmInstruction::getBasicBlockLableName(
-		const std::string& labelPrefix) const
-{
-	std::stringstream ret;
-	ret << labelPrefix << getAddress();
-	return ret.str();
 }
 
 /**
@@ -774,3 +823,4 @@ std::ostream& operator<<(std::ostream& out, const AsmInstruction& a)
 }
 
 } // namespace bin2llvmir
+} // namespace retdec

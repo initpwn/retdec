@@ -4,13 +4,14 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/array_index_op_expr.h"
-#include "llvmir2hll/ir/array_type.h"
-#include "llvmir2hll/ir/pointer_type.h"
-#include "llvmir2hll/ir/unknown_type.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/array_index_op_expr.h"
+#include "retdec/llvmir2hll/ir/array_type.h"
+#include "retdec/llvmir2hll/ir/pointer_type.h"
+#include "retdec/llvmir2hll/ir/unknown_type.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -20,13 +21,6 @@ namespace llvmir2hll {
 */
 ArrayIndexOpExpr::ArrayIndexOpExpr(ShPtr<Expression> base, ShPtr<Expression> index):
 	BinaryOpExpr(base, index) {}
-
-/**
-* @brief Destructs the operator.
-*/
-ArrayIndexOpExpr::~ArrayIndexOpExpr() {
-	// Observers are removed in the superclass.
-}
 
 ShPtr<Type> ArrayIndexOpExpr::getType() const {
 	ShPtr<Type> op1Type(op1->getType());
@@ -104,3 +98,4 @@ void ArrayIndexOpExpr::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

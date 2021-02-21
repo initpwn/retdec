@@ -4,10 +4,11 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/array_type.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/array_type.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -17,11 +18,6 @@ namespace llvmir2hll {
 */
 ArrayType::ArrayType(ShPtr<Type> elemType, const Dimensions &dims):
 	Type(), elemType(elemType), dims(dims) {}
-
-/**
-* @brief Destructs the type.
-*/
-ArrayType::~ArrayType() {}
 
 ShPtr<Value> ArrayType::clone() {
 	return ArrayType::create(elemType, dims);
@@ -75,3 +71,4 @@ void ArrayType::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

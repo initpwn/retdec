@@ -4,37 +4,37 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/graphs/cfg/cfg_builders/non_recursive_cfg_builder.h"
-#include "llvmir2hll/ir/and_op_expr.h"
-#include "llvmir2hll/ir/assign_stmt.h"
-#include "llvmir2hll/ir/break_stmt.h"
-#include "llvmir2hll/ir/call_stmt.h"
-#include "llvmir2hll/ir/const_bool.h"
-#include "llvmir2hll/ir/continue_stmt.h"
-#include "llvmir2hll/ir/empty_stmt.h"
-#include "llvmir2hll/ir/eq_op_expr.h"
-#include "llvmir2hll/ir/expression.h"
-#include "llvmir2hll/ir/for_loop_stmt.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/goto_stmt.h"
-#include "llvmir2hll/ir/if_stmt.h"
-#include "llvmir2hll/ir/neq_op_expr.h"
-#include "llvmir2hll/ir/return_stmt.h"
-#include "llvmir2hll/ir/switch_stmt.h"
-#include "llvmir2hll/ir/ufor_loop_stmt.h"
-#include "llvmir2hll/ir/unreachable_stmt.h"
-#include "llvmir2hll/ir/var_def_stmt.h"
-#include "llvmir2hll/ir/while_loop_stmt.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/expression_negater.h"
-#include "llvmir2hll/utils/ir.h"
-#include "llvm-support/diagnostics.h"
-#include "tl-cpputils/container.h"
+#include "retdec/llvmir2hll/graphs/cfg/cfg_builders/non_recursive_cfg_builder.h"
+#include "retdec/llvmir2hll/ir/and_op_expr.h"
+#include "retdec/llvmir2hll/ir/assign_stmt.h"
+#include "retdec/llvmir2hll/ir/break_stmt.h"
+#include "retdec/llvmir2hll/ir/call_stmt.h"
+#include "retdec/llvmir2hll/ir/const_bool.h"
+#include "retdec/llvmir2hll/ir/continue_stmt.h"
+#include "retdec/llvmir2hll/ir/empty_stmt.h"
+#include "retdec/llvmir2hll/ir/eq_op_expr.h"
+#include "retdec/llvmir2hll/ir/expression.h"
+#include "retdec/llvmir2hll/ir/for_loop_stmt.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/goto_stmt.h"
+#include "retdec/llvmir2hll/ir/if_stmt.h"
+#include "retdec/llvmir2hll/ir/neq_op_expr.h"
+#include "retdec/llvmir2hll/ir/return_stmt.h"
+#include "retdec/llvmir2hll/ir/switch_stmt.h"
+#include "retdec/llvmir2hll/ir/ufor_loop_stmt.h"
+#include "retdec/llvmir2hll/ir/unreachable_stmt.h"
+#include "retdec/llvmir2hll/ir/var_def_stmt.h"
+#include "retdec/llvmir2hll/ir/while_loop_stmt.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/expression_negater.h"
+#include "retdec/llvmir2hll/utils/ir.h"
+#include "retdec/utils/container.h"
+#include "retdec/utils/io/log.h"
 
-using namespace llvm_support;
+using namespace retdec::utils::io;
+using retdec::utils::clear;
 
-using tl_cpputils::clear;
-
+namespace retdec {
 namespace llvmir2hll {
 
 namespace {
@@ -146,11 +146,6 @@ NonRecursiveCFGBuilder::NonRecursiveCFGBuilder():
 	CFGBuilder(), stopIterNextStmts(false) {}
 
 /**
-* @brief Destructs the builder.
-*/
-NonRecursiveCFGBuilder::~NonRecursiveCFGBuilder() {}
-
-/**
 * @brief Creates and returns a new NonRecursiveCFGBuilder.
 */
 ShPtr<NonRecursiveCFGBuilder> NonRecursiveCFGBuilder::create() {
@@ -180,7 +175,8 @@ void NonRecursiveCFGBuilder::createEntryNode() {
 	// way.
 	// For each parameter...
 	for (const auto &param : func->getParams()) {
-		ShPtr<Statement> varDefStmt(VarDefStmt::create(param));
+		ShPtr<Statement> varDefStmt(
+			VarDefStmt::create(param, nullptr, nullptr, func->getStartAddress()));
 		cfg->stmtNodeMapping[varDefStmt] = cfg->entryNode;
 		cfg->entryNode->stmts.push_back(varDefStmt);
 	}
@@ -395,8 +391,8 @@ void NonRecursiveCFGBuilder::addEdgeFromVector(const EdgeToAdd &edge) {
 
 		// TODO This is the same problem as in the TODO below.
 		if (i == emptyStmtToNodeMap.end()) {
-			printWarningMessage("[NonRecursiveCFGBuilder] there is no node for"
-				" an edge to `", edge.succStmt, "` -> skipping this edge");
+			Log::error() << Log::Warning << "[NonRecursiveCFGBuilder] there is no node for"
+				" an edge to `" << edge.succStmt << "` -> skipping this edge" << std::endl;
 			return;
 		}
 
@@ -434,8 +430,8 @@ void NonRecursiveCFGBuilder::addEdgeFromVector(const EdgeToAdd &edge) {
 		//  - binaries-suite/arm-elf/O2/gnuarm-elf-gcc-O2--gzip
 		//
 		if (!targetNode) {
-			printWarningMessage("[NonRecursiveCFGBuilder] there is no node for"
-				" an edge to `", edge.succStmt, "` -> skipping this edge");
+			Log::error() << Log::Warning << "[NonRecursiveCFGBuilder] there is no node for"
+				" an edge to `" << edge.succStmt << "` -> skipping this edge" << std::endl;
 			return;
 		}
 
@@ -817,3 +813,4 @@ void NonRecursiveCFGBuilder::visit(ShPtr<UnreachableStmt> stmt) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

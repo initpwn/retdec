@@ -4,17 +4,18 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/const_int.h"
-#include "llvmir2hll/ir/int_type.h"
-#include "llvmir2hll/ir/unknown_type.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
-#include "tl-cpputils/string.h"
+#include "retdec/llvmir2hll/ir/const_int.h"
+#include "retdec/llvmir2hll/ir/int_type.h"
+#include "retdec/llvmir2hll/ir/unknown_type.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
+#include "retdec/utils/string.h"
 
-using tl_cpputils::isComposedOnlyOfChars;
-using tl_cpputils::isComposedOnlyOfStrings;
-using tl_cpputils::toLower;
+using retdec::utils::isComposedOnlyOfChars;
+using retdec::utils::isComposedOnlyOfStrings;
+using retdec::utils::toLower;
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -25,11 +26,6 @@ namespace llvmir2hll {
 ConstInt::ConstInt(const llvm::APSInt &value):
 	Constant(), value(value),
 	type(IntType::create(value.getBitWidth(), value.isSigned())) {}
-
-/**
-* @brief Destructs the constant.
-*/
-ConstInt::~ConstInt() {}
 
 ShPtr<Value> ConstInt::clone() {
 	ShPtr<ConstInt> constInt(ConstInt::create(value));
@@ -350,3 +346,4 @@ void ConstInt::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

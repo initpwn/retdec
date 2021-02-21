@@ -6,11 +6,12 @@
 
 #include <gtest/gtest.h>
 
-#include "llvmir2hll/config/configs/json_config.h"
-#include "llvmir2hll/support/types.h"
+#include "retdec/llvmir2hll/config/configs/json_config.h"
+#include "retdec/llvmir2hll/support/types.h"
 
 using namespace ::testing;
 
+namespace retdec {
 namespace llvmir2hll {
 namespace tests {
 
@@ -59,7 +60,7 @@ IsGlobalVarStoringWideStringReturnsTrueWhenVarIsGlobalAndStoresWideString) {
 				"name": "g",
 				"storage": {
 					"type": "global",
-					"value": 1000
+					"value": "1000"
 				},
 				"type": {
 					"llvmIr": "i32*",
@@ -92,7 +93,7 @@ GetRegisterForGlobalVarReturnsEmptyStringWhenGlobalVarHasNoRegisterNameAttached)
 				"realName": "my_g",
 				"storage": {
 					"type": "global",
-					"value": 1
+					"value": "1"
 				}
 			}
 		]
@@ -139,7 +140,7 @@ GetDetectedCryptoPatternForGlobalVarReturnsEmptyStringWhenGlobalVarHasNoCryptoPa
 				"realName": "my_g",
 				"storage": {
 					"type": "global",
-					"value": 1
+					"value": "1"
 				}
 			}
 		]
@@ -158,7 +159,7 @@ GetDetectedCryptoPatternForGlobalVarReturnsCorrectValueWhenGlobalVarHasCryptoPat
 				"realName": "my_g",
 				"storage": {
 					"type": "global",
-					"value": 1
+					"value": "1"
 				}
 			}
 		]
@@ -321,7 +322,7 @@ GetAddressRangeForFuncReturnsNoAddressRangeWhenFuncDoesNotHaveCompleteAddressRan
 		"functions": [
 			{
 				"name": "my_func",
-				"startAddr": 0
+				"startAddr": "0"
 			}
 		]
 	})");
@@ -335,8 +336,8 @@ GetAddressRangeForFuncReturnsCorrectRangeWhenFuncHasCompleteAddressRange) {
 		"functions": [
 			{
 				"name": "my_func",
-				"startAddr": 0,
-				"endAddr": 20
+				"startAddr": "0",
+				"endAddr": "20"
 			}
 		]
 	})");
@@ -361,7 +362,7 @@ GetLineRangeForFuncReturnsNoLineRangeWhenFuncDoesNotHaveCompleteLineRange) {
 		"functions": [
 			{
 				"name": "my_func",
-				"startLine": 1
+				"startLine": "1"
 			}
 		]
 	})");
@@ -375,8 +376,8 @@ GetLineRangeForFuncReturnsCorrectRangeWhenFuncHasCompleteLineRange) {
 		"functions": [
 			{
 				"name": "my_func",
-				"startLine": 1,
-				"endLine": 10
+				"startLine": "1",
+				"endLine": "10"
 			}
 		]
 	})");
@@ -421,6 +422,45 @@ IsUserDefinedFuncReturnsTrueWhenFuncIsUserDefined) {
 	})");
 
 	ASSERT_TRUE(config->isUserDefinedFunc("my_func"));
+}
+
+//
+// isDecompilerDefinedFunc()
+//
+
+TEST_F(JSONConfigTests,
+IsDecompilerDefinedFuncReturnsFalseWhenThereIsNoInfoForFunc) {
+	auto config = JSONConfig::empty();
+
+	ASSERT_FALSE(config->isDecompilerDefinedFunc("my_func"));
+}
+
+TEST_F(JSONConfigTests,
+IsDecompilerDefinedFuncReturnsFalseWhenFuncIsDynamicallyLinked) {
+	auto config = JSONConfig::fromString(R"({
+		"functions": [
+			{
+				"name": "my_func",
+				"fncType": "dynamicallyLinked"
+			}
+		]
+	})");
+
+	ASSERT_FALSE(config->isDecompilerDefinedFunc("my_func"));
+}
+
+TEST_F(JSONConfigTests,
+IsDecompilerDefinedFuncReturnsTrueWhenFuncIsDecompilerDefined) {
+	auto config = JSONConfig::fromString(R"({
+		"functions": [
+			{
+				"name": "my_func",
+				"fncType": "decompilerDefined"
+			}
+		]
+	})");
+
+	ASSERT_TRUE(config->isDecompilerDefinedFunc("my_func"));
 }
 
 //
@@ -920,38 +960,6 @@ GetDemangledNameOfFuncReturnsCorrectValueWhenFuncHasDemangledName) {
 }
 
 //
-// getFuncsFixedWithLLVMIRFixer()
-//
-
-TEST_F(JSONConfigTests,
-GetFuncsFixedWithLLVMIRFixerReturnsEmptySetWhenThereAreNoFuncs) {
-	auto config = JSONConfig::empty();
-
-	ASSERT_EQ(StringSet(), config->getFuncsFixedWithLLVMIRFixer());
-}
-
-TEST_F(JSONConfigTests,
-GetFuncsFixedWithLLVMIRFixerReturnsCorrectValueWhenThereAreFixedFuncs) {
-	auto config = JSONConfig::fromString(R"({
-		"functions": [
-			{
-				"name": "my_func1",
-				"wasFixed": false
-			},
-			{
-				"name": "my_func2",
-				"wasFixed": true
-			}
-		]
-	})");
-
-	ASSERT_EQ(
-		StringSet({"my_func2"}),
-		config->getFuncsFixedWithLLVMIRFixer()
-	);
-}
-
-//
 // getClassNames()
 //
 
@@ -1283,7 +1291,7 @@ IsDebugInfoAvailableReturnsTrueWhenGlobalVariableHasNameAssignedFromDebugInfo) {
 				"isFromDebug": true,
 				"storage": {
 					"type": "global",
-					"value": 0
+					"value": "0"
 				}
 			}
 		]
@@ -1318,8 +1326,8 @@ IsDebugInfoAvailableReturnsTrueWhenLineNumbersAreAvailable) {
 		"functions": [
 			{
 				"name": "my_func",
-				"startLine": 1,
-				"endLine": 10
+				"startLine": "1",
+				"endLine": "10"
 			}
 		]
 	})");
@@ -1392,11 +1400,13 @@ GetDebugModuleNamesReturnsCorrectSetWhenDebugInfoIsAvailable) {
 		"functions": [
 			{
 				"name": "my_func1",
-				"srcFileName": "module1.c"
+				"srcFileName": "module1.c",
+				"startAddr": "0x1234"
 			},
 			{
 				"name": "my_func2",
-				"srcFileName": "module2.c"
+				"srcFileName": "module2.c",
+				"startAddr": "0x5678"
 			}
 		]
 	})");
@@ -1428,7 +1438,7 @@ GetDebugNameForGlobalVarReturnsEmptyStringWhenGlobalVariableDoesNotExist) {
 				"realName": "h",
 				"storage": {
 					"type": "global",
-					"value": 1
+					"value": "1"
 				}
 			}
 		]
@@ -1447,7 +1457,7 @@ GetDebugNameForGlobalVarReturnsEmptyStringWhenGlobalVariableIsNotFromDebugInfo) 
 				"realName": "g",
 				"storage": {
 					"type": "global",
-					"value": 4227076
+					"value": "4227076"
 				}
 			}
 		]
@@ -1466,7 +1476,7 @@ GetDebugNameForGlobalVarReturnsCorrectValueWhenGlobalVarHasAssignedDebugName) {
 				"realName": "g",
 				"storage": {
 					"type": "global",
-					"value": 4227076
+					"value": "4227076"
 				}
 			}
 		]
@@ -1557,54 +1567,6 @@ GetDebugNameForLocalVarReturnsCorrectValueWhenLocalVarIsParameterWithAssignedDeb
 	})");
 
 	ASSERT_EQ("a", config->getDebugNameForLocalVar("my_func", "a_408004"));
-}
-
-//
-// getPrefixesOfFuncsToBeRemoved()
-//
-
-TEST_F(JSONConfigTests,
-GetPrefixesOfFuncsToBeRemovedReturnsEmptySetWhenThereAreNoPrefixes) {
-	auto config = JSONConfig::empty();
-
-	ASSERT_EQ(StringSet(), config->getPrefixesOfFuncsToBeRemoved());
-}
-
-TEST_F(JSONConfigTests,
-GetPrefixesOfFuncsToBeRemovedReturnsCorrectValueWhenThereArePrefixes) {
-	auto config = JSONConfig::fromString(R"({
-		"decompParams": {
-			"frontendFunctions": [
-				"prefix1",
-				"prefix2"
-			]
-		}
-	})");
-
-	ASSERT_EQ(
-		StringSet({"prefix1", "prefix2"}),
-		config->getPrefixesOfFuncsToBeRemoved()
-	);
-}
-
-//
-// getFrontendRelease()
-//
-
-TEST_F(JSONConfigTests,
-GetFrontendReleaseReturnsEmptyStringWhenThereIsNoRelease) {
-	auto config = JSONConfig::empty();
-
-	ASSERT_EQ("", config->getFrontendRelease());
-}
-
-TEST_F(JSONConfigTests,
-GetFrontendReleaseReturnsCorrectStringWhenReleaseIsSet) {
-	auto config = JSONConfig::fromString(R"({
-		"frontendVersion": "v1.0"
-	})");
-
-	ASSERT_EQ("v1.0", config->getFrontendRelease());
 }
 
 //
@@ -1797,33 +1759,6 @@ GetSelectedButNotFoundFuncsReturnsCorrectValueWhenSuchFuncsExist) {
 	);
 }
 
-//
-// getOptsRunInFrontend()
-//
-
-TEST_F(JSONConfigTests,
-GetOptsRunInFrontendReturnsEmptySetWhenNoOptimizationsRun) {
-	auto config = JSONConfig::empty();
-
-	ASSERT_EQ(StringSet(), config->getOptsRunInFrontend());
-}
-
-TEST_F(JSONConfigTests,
-GetOptsRunInFrontendReturnsCorrectValueWhenOptimizationsRun) {
-	auto config = JSONConfig::fromString(R"({
-		"decompParams": {
-			"completedFrontendPasses": [
-				"opt1",
-				"opt2"
-			]
-		}
-	})");
-
-	ASSERT_EQ(
-		StringSet({"opt1", "opt2"}),
-		config->getOptsRunInFrontend()
-	);
-}
-
 } // namespace tests
 } // namespace llvmir2hll
+} // namespace retdec

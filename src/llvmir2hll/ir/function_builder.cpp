@@ -4,13 +4,14 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/empty_stmt.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/function_builder.h"
-#include "llvmir2hll/ir/void_type.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/types.h"
+#include "retdec/llvmir2hll/ir/empty_stmt.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/function_builder.h"
+#include "retdec/llvmir2hll/ir/void_type.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/types.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 namespace {
@@ -24,7 +25,7 @@ const std::string BUILD_ALREADY_CALLED_ERROR_MSG(
 *        for more details).
 */
 ShPtr<Function> createDefaultFunction(const std::string &funcName) {
-	return Function::create(VoidType::create(), funcName, VarVector());
+	return Function::create(nullptr, VoidType::create(), funcName, VarVector());
 }
 
 } // anonymous namespace
@@ -147,3 +148,4 @@ ShPtr<Function> FunctionBuilder::releaseFuncAndInvalidateBuilder() {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

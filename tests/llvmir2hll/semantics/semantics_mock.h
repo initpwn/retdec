@@ -7,10 +7,13 @@
 #ifndef BACKEND_BIR_SEMANTICS_TESTS_SEMANTICS_MOCK_H
 #define BACKEND_BIR_SEMANTICS_TESTS_SEMANTICS_MOCK_H
 
+#include <optional>
+
 #include <gmock/gmock.h>
 
-#include "llvmir2hll/semantics/semantics.h"
+#include "retdec/llvmir2hll/semantics/semantics.h"
 
+namespace retdec {
 namespace llvmir2hll {
 namespace tests {
 
@@ -20,21 +23,22 @@ namespace tests {
 class SemanticsMock: public Semantics {
 public:
 	MOCK_CONST_METHOD0(getId, std::string ());
-	MOCK_CONST_METHOD0(getMainFuncName, Maybe<std::string> ());
+	MOCK_CONST_METHOD0(getMainFuncName, std::optional<std::string> ());
 	MOCK_CONST_METHOD1(getCHeaderFileForFunc,
-		Maybe<std::string> (const std::string &));
+		std::optional<std::string> (const std::string &));
 	MOCK_CONST_METHOD1(funcNeverReturns,
-		Maybe<bool> (const std::string &));
+		std::optional<bool> (const std::string &));
 	MOCK_CONST_METHOD1(getNameOfVarStoringResult,
-		Maybe<std::string> (const std::string &));
+		std::optional<std::string> (const std::string &));
 	MOCK_CONST_METHOD2(getNameOfParam,
-		Maybe<std::string> (const std::string &, unsigned));
+		std::optional<std::string> (const std::string &, unsigned));
 	MOCK_CONST_METHOD2(getSymbolicNamesForParam,
-		Maybe<IntStringMap> (const std::string &, unsigned));
+		std::optional<IntStringMap> (const std::string &, unsigned));
 };
 
 } // namespace tests
 } // namespace llvmir2hll
+} // namespace retdec
 
 /**
 * @brief Instantiates SemanticsMock with the given name.

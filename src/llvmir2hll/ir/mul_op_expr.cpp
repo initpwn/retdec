@@ -4,10 +4,11 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/mul_op_expr.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/mul_op_expr.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -17,13 +18,6 @@ namespace llvmir2hll {
 */
 MulOpExpr::MulOpExpr(ShPtr<Expression> op1, ShPtr<Expression> op2):
 	BinaryOpExpr(op1, op2) {}
-
-/**
-* @brief Destructs the operator.
-*/
-MulOpExpr::~MulOpExpr() {
-	// Observers are removed in the superclass.
-}
 
 bool MulOpExpr::isEqualTo(ShPtr<Value> otherValue) const {
 	if (ShPtr<MulOpExpr> otherValueMulOpExpr = cast<MulOpExpr>(otherValue)) {
@@ -68,3 +62,4 @@ void MulOpExpr::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

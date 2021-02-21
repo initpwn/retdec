@@ -4,10 +4,11 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/address_op_expr.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/address_op_expr.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -17,13 +18,6 @@ namespace llvmir2hll {
 */
 AddressOpExpr::AddressOpExpr(ShPtr<Expression> op):
 	UnaryOpExpr(op) {}
-
-/**
-* @brief Destructs the operator.
-*/
-AddressOpExpr::~AddressOpExpr() {
-	// Observers are removed in the superclass.
-}
 
 bool AddressOpExpr::isEqualTo(ShPtr<Value> otherValue) const {
 	if (ShPtr<AddressOpExpr> otherValueAddressOpExpr = cast<AddressOpExpr>(otherValue)) {
@@ -64,3 +58,4 @@ ShPtr<AddressOpExpr> AddressOpExpr::create(ShPtr<Expression> op) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

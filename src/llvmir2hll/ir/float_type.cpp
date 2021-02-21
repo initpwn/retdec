@@ -4,10 +4,11 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/float_type.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/float_type.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -17,11 +18,6 @@ namespace llvmir2hll {
 */
 FloatType::FloatType(unsigned size):
 	Type(), size(size) {}
-
-/**
-* @brief Destructs the type.
-*/
-FloatType::~FloatType() {}
 
 ShPtr<Value> FloatType::clone() {
 	return FloatType::create(size);
@@ -95,3 +91,4 @@ void FloatType::accept(Visitor *v) {
 std::map<unsigned, ShPtr<FloatType>> FloatType::createdTypes;
 
 } // namespace llvmir2hll
+} // namespace retdec

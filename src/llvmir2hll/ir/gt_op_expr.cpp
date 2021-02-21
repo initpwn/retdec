@@ -4,11 +4,12 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/gt_op_expr.h"
-#include "llvmir2hll/ir/int_type.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/gt_op_expr.h"
+#include "retdec/llvmir2hll/ir/int_type.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -19,13 +20,6 @@ namespace llvmir2hll {
 GtOpExpr::GtOpExpr(ShPtr<Expression> op1, ShPtr<Expression> op2,
 		Variant variant):
 	BinaryOpExpr(op1, op2), variant(variant) {}
-
-/**
-* @brief Destructs the operator.
-*/
-GtOpExpr::~GtOpExpr() {
-	// Observers are removed in the superclass.
-}
 
 bool GtOpExpr::isEqualTo(ShPtr<Value> otherValue) const {
 	if (ShPtr<GtOpExpr> otherValueGtOpExpr = cast<GtOpExpr>(otherValue)) {
@@ -85,3 +79,4 @@ void GtOpExpr::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

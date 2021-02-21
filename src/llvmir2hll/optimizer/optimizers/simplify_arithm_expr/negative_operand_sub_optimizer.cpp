@@ -4,14 +4,15 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/evaluator/arithm_expr_evaluator.h"
-#include "llvmir2hll/ir/add_op_expr.h"
-#include "llvmir2hll/ir/const_float.h"
-#include "llvmir2hll/ir/const_int.h"
-#include "llvmir2hll/ir/neg_op_expr.h"
-#include "llvmir2hll/ir/sub_op_expr.h"
-#include "llvmir2hll/optimizer/optimizers/simplify_arithm_expr/negative_operand_sub_optimizer.h"
+#include "retdec/llvmir2hll/evaluator/arithm_expr_evaluator.h"
+#include "retdec/llvmir2hll/ir/add_op_expr.h"
+#include "retdec/llvmir2hll/ir/const_float.h"
+#include "retdec/llvmir2hll/ir/const_int.h"
+#include "retdec/llvmir2hll/ir/neg_op_expr.h"
+#include "retdec/llvmir2hll/ir/sub_op_expr.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/simplify_arithm_expr/negative_operand_sub_optimizer.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 REGISTER_AT_FACTORY("NegativeOperand", NEGATIVE_OPERAND_SUB_OPTIMIZER_ID,
@@ -26,11 +27,6 @@ REGISTER_AT_FACTORY("NegativeOperand", NEGATIVE_OPERAND_SUB_OPTIMIZER_ID,
 NegativeOperandSubOptimizer::NegativeOperandSubOptimizer(
 		ShPtr<ArithmExprEvaluator> arithmExprEvaluator):
 			SubOptimizer(arithmExprEvaluator) {}
-
-/**
-* @brief Destructor.
-*/
-NegativeOperandSubOptimizer::~NegativeOperandSubOptimizer() {}
 
 /**
 * @brief Creates a new NegativeOperandSubOptimizer.
@@ -213,3 +209,4 @@ ShPtr<ConstFloat> NegativeOperandSubOptimizer::ifNegativeConstFloatReturnIt(
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

@@ -6,14 +6,15 @@
 
 #include <cstddef>
 
-#include "llvmir2hll/graphs/cg/cg.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/module.h"
-#include "llvmir2hll/support/debug.h"
-#include "tl-cpputils/container.h"
+#include "retdec/llvmir2hll/graphs/cg/cg.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/module.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/utils/container.h"
 
-using tl_cpputils::addToSet;
+using retdec::utils::addToSet;
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -33,11 +34,6 @@ CG::CalledFuncs::CalledFuncs(ShPtr<Function> caller, bool callsOnlyDefinedFuncs,
 * @param[in] module Module for which this call graph is created.
 */
 CG::CG(ShPtr<Module> module): module(module), callerCalleeMap() {}
-
-/**
-* @brief Destructs the call graph.
-*/
-CG::~CG() {}
 
 /**
 * @brief Returns the module for which this call graph has been created.
@@ -139,3 +135,4 @@ CG::caller_iterator CG::caller_end() const {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

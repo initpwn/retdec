@@ -4,15 +4,16 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/analysis/value_analysis.h"
-#include "llvmir2hll/graphs/cfg/cfg_traversals/lhs_rhs_uses_cfg_traversal.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/statement.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/obtainer/call_info_obtainer.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/utils/ir.h"
+#include "retdec/llvmir2hll/analysis/value_analysis.h"
+#include "retdec/llvmir2hll/graphs/cfg/cfg_traversals/lhs_rhs_uses_cfg_traversal.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/statement.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/obtainer/call_info_obtainer.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/utils/ir.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -26,11 +27,6 @@ LhsRhsUsesCFGTraversal::LhsRhsUsesCFGTraversal(ShPtr<Statement> stmt,
 	ShPtr<ValueAnalysis> va, ShPtr<CallInfoObtainer> cio):
 		CFGTraversal(cfg, true), origStmt(stmt), origLhsVar(origLhsVar),
 		origRhsVars(origRhsVars), va(va), cio(cio), uses() {}
-
-/**
-* @brief Destructs the traverser.
-*/
-LhsRhsUsesCFGTraversal::~LhsRhsUsesCFGTraversal() {}
 
 /**
 * @brief Returns the uses of left-hand side of @a stmt such that there are no
@@ -239,3 +235,4 @@ bool LhsRhsUsesCFGTraversal::combineRetVals(bool origRetVal, bool newRetVal) con
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

@@ -6,26 +6,23 @@
  */
 
 #include <iomanip>
-#include <iostream>
 
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
 
-#include "tl-cpputils/container.h"
-#include "bin2llvmir/optimizations/select_functions/select_functions.h"
-#include "bin2llvmir/utils/defs.h"
+#include "retdec/bin2llvmir/optimizations/select_functions/select_functions.h"
+#include "retdec/bin2llvmir/utils/debug.h"
 #define debug_enabled false
-#include "llvm-support/utils.h"
 
-using namespace llvm_support;
 using namespace llvm;
 
+namespace retdec {
 namespace bin2llvmir {
 
 char SelectFunctions::ID = 0;
 
 static RegisterPass<SelectFunctions> X(
-		"select-fncs",
+		"retdec-select-fncs",
 		"Selected functions optimization",
 		 false, // Only looks at CFG
 		 false // Analysis Pass
@@ -53,21 +50,17 @@ bool SelectFunctions::run(Module& M)
 {
 	if (_config == nullptr)
 	{
-		LOG << "[ABORT] config file is not available\n";
 		return false;
 	}
-
 	if (!_config->getConfig().parameters.isSomethingSelected())
 	{
-		return findNotReturningFunctions(M);
+		return false;
 	}
 
 	bool changed = false;
 
-//	dumpModuleToFile(&M);
-
 	LOG << "functions:" << std::endl;
-	for (auto& f : M.getFunctionList())
+	for (Function& f : M.getFunctionList())
 	{
 		if (f.isDeclaration())
 		{
@@ -84,38 +77,26 @@ bool SelectFunctions::run(Module& M)
 				<< " -- " << cf->getEnd() << std::endl;
 
 		bool inRanges = false;
-		if (_config->getConfig().isIda()
-				&& !_config->getConfig().parameters.selectedRanges.empty())
+		retdec::common::AddressRange fncRange;
+		if (cf->getStart().isDefined()
+				&& cf->getEnd().isDefined()
+				&& cf->getStart() < cf->getEnd())
 		{
-			auto r = _config->getConfig().parameters.selectedRanges.front();
-			if (r.getStart() == cf->getStart())
+			fncRange = retdec::common::AddressRange(
+					cf->getStart(),
+					cf->getEnd());
+		}
+		for (auto& r : _config->getConfig().parameters.selectedRanges)
+		{
+			if (r.contains(cf->getStart()))
 			{
 				inRanges = true;
+				break;
 			}
-		}
-		else
-		{
-			tl_cpputils::AddressRange fncRange;
-			if (cf->getStart().isDefined()
-					&& cf->getEnd().isDefined()
-					&& cf->getStart() <= cf->getEnd())
+			if (fncRange.contains(r.getStart()))
 			{
-				fncRange = tl_cpputils::AddressRange(
-						cf->getStart(),
-						cf->getEnd());
-			}
-			for (auto& r : _config->getConfig().parameters.selectedRanges)
-			{
-				if (r.contains(cf->getStart()))
-				{
-					inRanges = true;
-					break;
-				}
-				if (fncRange.contains(r.getStart()))
-				{
-					inRanges = true;
-					break;
-				}
+				inRanges = true;
+				break;
 			}
 		}
 		if (inRanges)
@@ -146,62 +127,8 @@ bool SelectFunctions::run(Module& M)
 		changed = true;
 	}
 
-	changed |= findNotReturningFunctions(M);
-
 	return changed;
 }
 
-/**
- * TODO: just experimental. if it works, move it to a separate analysis.
- */
-bool SelectFunctions::findNotReturningFunctions(llvm::Module& M)
-{
-	tl_cpputils::NonIterableSet<std::string> exitFncs =
-	{
-		"exit", "_exit", "ExitThread", "abort", "longjmp", "_Exit",
-		"quick_exit", "thrd_exit", "ExitProcess"
-	};
-
-	for (auto& f : M.getFunctionList())
-	{
-		if (f.isDeclaration() || f.empty())
-		{
-			continue;
-		}
-
-		tl_cpputils::NonIterableSet<BasicBlock*> seen;
-		auto* bb = &(f.front());
-		while (bb && seen.hasNot(bb))
-		{
-			for (Instruction& i : *bb)
-			{
-				auto* c = dyn_cast<CallInst>(&i);
-				if (c && c->getCalledFunction())
-				{
-					auto* cf = c->getCalledFunction();
-					std::string n = cf->getName();
-					if (exitFncs.has(n))
-					{
-						f.setDoesNotReturn();
-						bb = nullptr;
-						break;
-					}
-				}
-			}
-
-			if (bb == nullptr)
-			{
-				break;
-			}
-			else
-			{
-				seen.insert(bb);
-				bb = bb->getSingleSuccessor();
-			}
-		}
-	}
-
-	return false;
-}
-
 } // namespace bin2llvmir
+} // namespace retdec

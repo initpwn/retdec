@@ -6,90 +6,81 @@
 
 #include <sstream>
 
-#include "llvmir2hll/config/configs/json_config.h"
-#include "llvmir2hll/support/debug.h"
-#include "retdec-config/config.h"
-#include "tl-cpputils/container.h"
-#include "tl-cpputils/string.h"
+#include "retdec/llvmir2hll/config/configs/json_config.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/config/config.h"
+#include "retdec/utils/container.h"
+#include "retdec/utils/string.h"
 
 using namespace std::string_literals;
 
-using tl_cpputils::addToSet;
-using tl_cpputils::hasItem;
-using tl_cpputils::trim;
-using tl_cpputils::unifyLineEnds;
+using retdec::utils::addToSet;
+using retdec::utils::hasItem;
+using retdec::utils::trim;
+using retdec::utils::unifyLineEnds;
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
 * @brief Private implementation.
 */
 struct JSONConfig::Impl {
-	Impl();
+	Impl() = default;
 
-	const retdec_config::Object &getConfigGlobalVariableByNameOrEmptyVariable(
+	const retdec::common::Object &getConfigGlobalVariableByNameOrEmptyVariable(
 		const std::string &name) const;
-	const retdec_config::Object *getConfigRegisterByName(const std::string &name) const;
-	retdec_config::Function *getConfigFunctionByName(const std::string &name);
-	const retdec_config::Function *getConfigFunctionByName(const std::string &name) const;
-	const retdec_config::Function &getConfigFunctionByNameOrEmptyFunction(
+	const retdec::common::Object *getConfigRegisterByName(const std::string &name) const;
+	const retdec::common::Function *getConfigFunctionByName(const std::string &name) const;
+	const retdec::common::Function &getConfigFunctionByNameOrEmptyFunction(
 		const std::string &name) const;
-	const retdec_config::Class *getConfigClassByName(const std::string &name) const;
-	const retdec_config::Class &getConfigClassByNameOrEmptyClass(
+	const retdec::common::Class *getConfigClassByName(const std::string &name) const;
+	const retdec::common::Class &getConfigClassByNameOrEmptyClass(
 		const std::string &name) const;
-	std::string getNameOfRegister(const retdec_config::Object &reg) const;
+	std::string getNameOfRegister(const retdec::common::Object &reg) const;
 
 	/// Path to the config file (if any).
 	std::string path;
 
 	/// Underlying config.
-	retdec_config::Config config;
+	retdec::config::Config config;
 };
 
-/**
-* @brief Constructs the implementation.
-*/
-JSONConfig::Impl::Impl() = default;
-
-retdec_config::Function *JSONConfig::Impl::getConfigFunctionByName(
-		const std::string &name) {
-	return config.functions.getFunctionByName(name);
-}
-
 // A const overload of getConfigFunctionByName().
-const retdec_config::Function *JSONConfig::Impl::getConfigFunctionByName(
+const retdec::common::Function *JSONConfig::Impl::getConfigFunctionByName(
 		const std::string &name) const {
 	return config.functions.getFunctionByName(name);
 }
 
-const retdec_config::Object &JSONConfig::Impl::getConfigGlobalVariableByNameOrEmptyVariable(
+const retdec::common::Object &JSONConfig::Impl::getConfigGlobalVariableByNameOrEmptyVariable(
 		const std::string &name) const {
-	static const retdec_config::Object emptyGlobalVariable(
+	static const retdec::common::Object emptyGlobalVariable(
 		"no-name",
-		retdec_config::Storage::undefined()
+		retdec::common::Storage::undefined()
 	);
 	auto g = config.globals.getObjectByName(name);
 	return g ? *g : emptyGlobalVariable;
 }
 
-const retdec_config::Object *JSONConfig::Impl::getConfigRegisterByName(
+const retdec::common::Object *JSONConfig::Impl::getConfigRegisterByName(
 		const std::string &name) const {
 	return config.registers.getObjectByName(name);
 }
 
-const retdec_config::Function &JSONConfig::Impl::getConfigFunctionByNameOrEmptyFunction(
+const retdec::common::Function &JSONConfig::Impl::getConfigFunctionByNameOrEmptyFunction(
 		const std::string &name) const {
-	static const retdec_config::Function emptyFunction(""s);
+	static const retdec::common::Function emptyFunction(""s);
 	auto f = getConfigFunctionByName(name);
 	return f ? *f : emptyFunction;
 }
 
-const retdec_config::Class *JSONConfig::Impl::getConfigClassByName(
+const retdec::common::Class *JSONConfig::Impl::getConfigClassByName(
 		const std::string &name) const {
-	return config.classes.getElementById(name);
+	auto it = config.classes.find(name);
+	return it != config.classes.end() ? &(*it) : nullptr;
 }
 
-std::string JSONConfig::Impl::getNameOfRegister(const retdec_config::Object &reg) const {
+std::string JSONConfig::Impl::getNameOfRegister(const retdec::common::Object &reg) const {
 	// Each register has a name set in its storage. However, this name may be
 	// just our internal LLVM IR name. To get the real name, we have to perform
 	// another check.
@@ -104,9 +95,9 @@ std::string JSONConfig::Impl::getNameOfRegister(const retdec_config::Object &reg
 	return !realName.empty() ? realName : name;
 }
 
-const retdec_config::Class &JSONConfig::Impl::getConfigClassByNameOrEmptyClass(
+const retdec::common::Class &JSONConfig::Impl::getConfigClassByNameOrEmptyClass(
 		const std::string &name) const {
-	static const retdec_config::Class emptyClass(""s);
+	static const retdec::common::Class emptyClass(""s);
 	auto c = getConfigClassByName(name);
 	return c ? *c : emptyClass;
 }
@@ -127,9 +118,9 @@ UPtr<JSONConfig> JSONConfig::fromFile(const std::string &path) {
 	config->impl->path = path;
 	try {
 		config->impl->config.readJsonFile(path);
-	} catch (const retdec_config::FileNotFoundException &ex) {
+	} catch (const retdec::config::FileNotFoundException &ex) {
 		throw JSONConfigFileNotFoundError(ex.what());
-	} catch (const retdec_config::Exception &ex) {
+	} catch (const retdec::config::Exception &ex) {
 		throw JSONConfigParsingError(ex.what());
 	}
 	return config;
@@ -145,7 +136,7 @@ UPtr<JSONConfig> JSONConfig::fromString(const std::string &str) {
 	auto config = UPtr<JSONConfig>(new JSONConfig());
 	try {
 		config->impl->config.readJsonString(str);
-	} catch (const retdec_config::Exception &ex) {
+	} catch (const retdec::config::Exception &ex) {
 		throw JSONConfigParsingError(ex.what());
 	}
 	return config;
@@ -193,6 +184,11 @@ std::string JSONConfig::getRegisterForGlobalVar(const std::string &var) const {
 	return inRegister ? registerName : std::string();
 }
 
+Address JSONConfig::getAddressForGlobalVar(const std::string &var) const {
+	const auto &g = impl->getConfigGlobalVariableByNameOrEmptyVariable(var);
+	return g.getStorage().getAddress();
+}
+
 std::string JSONConfig::getDetectedCryptoPatternForGlobalVar(const std::string &var) const {
 	const auto &g = impl->getConfigGlobalVariableByNameOrEmptyVariable(var);
 	return g.getCryptoDescription();
@@ -225,11 +221,16 @@ LineRange JSONConfig::getLineRangeForFunc(const std::string &func) const {
 	return LineRange(startLine.getValue(), endLine.getValue());
 }
 
-bool JSONConfig::isUserDefinedFunc(const std::string &func) const {
+bool JSONConfig::isDecompilerDefinedFunc(const std::string &func) const {
 	// We cannot use getConfigFunctionByNameOrEmptyFunction() because config
-	// functions are user-defined by default.
+	// functions are decompiler-defined by default.
 	const auto f = impl->getConfigFunctionByName(func);
-	return f ? f->isUserDefined() : false;
+	return f ? f->isDecompilerDefined() : false;
+}
+
+bool JSONConfig::isUserDefinedFunc(const std::string &func) const {
+	const auto &f = impl->getConfigFunctionByNameOrEmptyFunction(func);
+	return f.isUserDefined();
 }
 
 bool JSONConfig::isStaticallyLinkedFunc(const std::string &func) const {
@@ -289,17 +290,6 @@ std::string JSONConfig::getDemangledNameOfFunc(const std::string &func) const {
 	return f.getDemangledName();
 }
 
-StringSet JSONConfig::getFuncsFixedWithLLVMIRFixer() const {
-	StringSet fixedFuncs;
-	for (const auto &addrFuncPair : impl->config.functions) {
-		auto &func = addrFuncPair.second;
-		if (func.isFixed()) {
-			fixedFuncs.insert(func.getName());
-		}
-	}
-	return fixedFuncs;
-}
-
 StringSet JSONConfig::getClassNames() const {
 	StringSet classNames;
 	for (const auto &c : impl->config.classes) {
@@ -344,16 +334,14 @@ std::string JSONConfig::getDemangledNameOfClass(const std::string &cl) const {
 
 bool JSONConfig::isDebugInfoAvailable() const {
 	// Global variables.
-	for (const auto &nameVarPair : impl->config.globals) {
-		const auto &v = nameVarPair.second;
+	for (const auto &v : impl->config.globals) {
 		if (v.isFromDebug()) {
 			return true;
 		}
 	}
 
 	// Functions.
-	for (const auto &addrFuncPair : impl->config.functions) {
-		const auto &func = addrFuncPair.second;
+	for (const auto &func : impl->config.functions) {
 		if (func.isFromDebug()) {
 			return true;
 		}
@@ -371,8 +359,7 @@ bool JSONConfig::isDebugInfoAvailable() const {
 		}
 
 		// Local variables.
-		for (const auto &nameVarPair : func.locals) {
-			const auto &v = nameVarPair.second;
+		for (const auto &v : func.locals) {
 			if (v.isFromDebug()) {
 				return true;
 			}
@@ -389,8 +376,7 @@ std::string JSONConfig::getDebugModuleNameForFunc(const std::string &func) const
 
 StringSet JSONConfig::getDebugModuleNames() const {
 	StringSet moduleNames;
-	for (const auto &addrFuncPair : impl->config.functions) {
-		const auto &func = addrFuncPair.second;
+	for (const auto &func : impl->config.functions) {
 		const auto &moduleName = func.getSourceFileName();
 		if (!moduleName.empty()) {
 			moduleNames.insert(moduleName);
@@ -412,14 +398,6 @@ std::string JSONConfig::getDebugNameForLocalVar(const std::string &func,
 		v = f.parameters.getObjectByName(var);
 	}
 	return v && v->isFromDebug() ? v->getRealName() : std::string();
-}
-
-StringSet JSONConfig::getPrefixesOfFuncsToBeRemoved() const {
-	return impl->config.parameters.frontendFunctions;
-}
-
-std::string JSONConfig::getFrontendRelease() const {
-	return impl->config.getFrontendVersion();
 }
 
 std::size_t JSONConfig::getNumberOfFuncsDetectedInFrontend() const {
@@ -472,8 +450,5 @@ StringSet JSONConfig::getSelectedButNotFoundFuncs() const {
 	return impl->config.parameters.selectedNotFoundFunctions;
 }
 
-StringSet JSONConfig::getOptsRunInFrontend() const {
-	return impl->config.parameters.completedFrontendPasses;
-}
-
 } // namespace llvmir2hll
+} // namespace retdec

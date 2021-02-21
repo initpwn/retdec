@@ -4,21 +4,14 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/break_stmt.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/break_stmt.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
-/**
-* @brief Constructs a new break statement.
-*/
-BreakStmt::BreakStmt() {}
-
-/**
-* @brief Destructs the statement.
-*/
-BreakStmt::~BreakStmt() {}
+BreakStmt::BreakStmt(Address a) : Statement(a) {}
 
 bool BreakStmt::isEqualTo(ShPtr<Value> otherValue) const {
 	return isa<BreakStmt>(otherValue);
@@ -34,16 +27,17 @@ ShPtr<Expression> BreakStmt::asExpression() const {
 }
 
 ShPtr<Value> BreakStmt::clone() {
-	ShPtr<BreakStmt> breakStmt(BreakStmt::create());
+	ShPtr<BreakStmt> breakStmt(BreakStmt::create(getAddress()));
 	breakStmt->setMetadata(getMetadata());
 	return breakStmt;
 }
 
 /**
 * @brief Creates a new break statement.
+* @param[in] a Address.
 */
-ShPtr<BreakStmt> BreakStmt::create() {
-	return ShPtr<BreakStmt>(new BreakStmt());
+ShPtr<BreakStmt> BreakStmt::create(Address a) {
+	return ShPtr<BreakStmt>(new BreakStmt(a));
 }
 
 void BreakStmt::accept(Visitor *v) {
@@ -51,3 +45,4 @@ void BreakStmt::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

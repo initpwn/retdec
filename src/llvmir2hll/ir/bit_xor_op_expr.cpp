@@ -4,10 +4,11 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/bit_xor_op_expr.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/bit_xor_op_expr.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -17,13 +18,6 @@ namespace llvmir2hll {
 */
 BitXorOpExpr::BitXorOpExpr(ShPtr<Expression> op1, ShPtr<Expression> op2):
 	BinaryOpExpr(op1, op2) {}
-
-/**
-* @brief Destructs the operator.
-*/
-BitXorOpExpr::~BitXorOpExpr() {
-	// Observers are removed in the superclass.
-}
 
 bool BitXorOpExpr::isEqualTo(ShPtr<Value> otherValue) const {
 	if (ShPtr<BitXorOpExpr> otherValueBitXorOpExpr = cast<BitXorOpExpr>(otherValue)) {
@@ -68,3 +62,4 @@ void BitXorOpExpr::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

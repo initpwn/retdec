@@ -5,12 +5,13 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/semantics/semantics/libc_semantics/func_never_returns.h"
-#include "llvmir2hll/support/types.h"
-#include "tl-cpputils/container.h"
+#include "retdec/llvmir2hll/semantics/semantics/libc_semantics/func_never_returns.h"
+#include "retdec/llvmir2hll/support/types.h"
+#include "retdec/utils/container.h"
 
-using tl_cpputils::hasItem;
+using retdec::utils::hasItem;
 
+namespace retdec {
 namespace llvmir2hll {
 namespace semantics {
 namespace libc {
@@ -54,10 +55,12 @@ const StringSet &FUNC_NEVER_RETURNS(initFuncNeverReturns());
 *
 * See its description for more details.
 */
-Maybe<bool> funcNeverReturns(const std::string &funcName) {
-	return hasItem(FUNC_NEVER_RETURNS, funcName) ? Just(true) : Nothing<bool>();
+std::optional<bool> funcNeverReturns(const std::string &funcName) {
+	return hasItem(FUNC_NEVER_RETURNS, funcName)
+			? std::optional<bool>(true) : std::nullopt;
 }
 
 } // namespace libc
 } // namespace semantics
 } // namespace llvmir2hll
+} // namespace retdec

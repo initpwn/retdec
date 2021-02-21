@@ -5,13 +5,14 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/return_stmt.h"
-#include "llvmir2hll/ir/void_type.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/validator/validator_factory.h"
-#include "llvmir2hll/validator/validators/return_validator.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/return_stmt.h"
+#include "retdec/llvmir2hll/ir/void_type.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/validator/validator_factory.h"
+#include "retdec/llvmir2hll/validator/validators/return_validator.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 REGISTER_AT_FACTORY("Return", RETURN_VALIDATOR_ID, ValidatorFactory,
@@ -21,11 +22,6 @@ REGISTER_AT_FACTORY("Return", RETURN_VALIDATOR_ID, ValidatorFactory,
 * @brief Constructs a new validator.
 */
 ReturnValidator::ReturnValidator(): Validator() {}
-
-/**
-* @brief Destructs the validator.
-*/
-ReturnValidator::~ReturnValidator() {}
 
 /**
 * @brief Creates a new validator.
@@ -41,17 +37,22 @@ std::string ReturnValidator::getId() const {
 void ReturnValidator::visit(ShPtr<ReturnStmt> stmt) {
 	// If the function is non-void, there has to be a return value.
 	if (!isa<VoidType>(func->getRetType()) && !stmt->getRetVal()) {
-		validationError("In ", func->getName(), "(), which is non-void, ",
-			"found a ReturnStmt `", stmt, "` without a return value.");
+		std::ostringstream stmtStr;
+		stmtStr << stmt;
+		validationError("In "+func->getName()+"(), which is non-void, "
+			"found a ReturnStmt `"+stmtStr.str()+"` without a return value.");
 	}
 
 	// If the function is void, there cannot be a return value.
 	if (isa<VoidType>(func->getRetType()) && stmt->getRetVal()) {
-		validationError("In ", func->getName(), "(), which returns void, ",
-			"found a ReturnStmt `", stmt, "` with a return value.");
+		std::ostringstream stmtStr;
+		stmtStr << stmt;
+		validationError("In "+func->getName()+"(), which returns void, "
+			"found a ReturnStmt `"+stmtStr.str()+"` with a return value.");
 	}
 
 	OrderedAllVisitor::visit(stmt);
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

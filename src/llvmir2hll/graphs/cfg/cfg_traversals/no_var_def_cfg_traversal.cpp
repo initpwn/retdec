@@ -4,15 +4,16 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/analysis/value_analysis.h"
-#include "llvmir2hll/graphs/cfg/cfg_traversals/no_var_def_cfg_traversal.h"
-#include "llvmir2hll/ir/statement.h"
-#include "llvmir2hll/support/debug.h"
-#include "tl-cpputils/container.h"
+#include "retdec/llvmir2hll/analysis/value_analysis.h"
+#include "retdec/llvmir2hll/graphs/cfg/cfg_traversals/no_var_def_cfg_traversal.h"
+#include "retdec/llvmir2hll/ir/statement.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/utils/container.h"
 
-using tl_cpputils::hasItem;
-using tl_cpputils::shareSomeItem;
+using retdec::utils::hasItem;
+using retdec::utils::shareSomeItem;
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -26,11 +27,6 @@ namespace llvmir2hll {
 NoVarDefCFGTraversal::NoVarDefCFGTraversal(ShPtr<CFG> cfg, const StmtSet &ends,
 		const VarSet &vars, ShPtr<ValueAnalysis> va):
 		CFGTraversal(cfg, true), ends(ends), vars(vars), va(va) {}
-
-/**
-* @brief Destructs the traverser.
-*/
-NoVarDefCFGTraversal::~NoVarDefCFGTraversal() {}
 
 /**
 * @brief Returns @c true if no variable from @a vars is defined between @a start
@@ -58,9 +54,6 @@ bool NoVarDefCFGTraversal::noVarIsDefinedBetweenStmts(ShPtr<Statement> start,
 	PRECONDITION(va->isInValidState(), "it is not in a valid state");
 
 	ShPtr<NoVarDefCFGTraversal> traverser(new NoVarDefCFGTraversal(cfg, ends, vars, va));
-	// We mark the start statement as checked so we don't have to check this in
-	// visitStmt().
-	traverser->checkedStmts.insert(start);
 	return traverser->performReverseTraversal(start);
 }
 
@@ -99,3 +92,4 @@ bool NoVarDefCFGTraversal::combineRetVals(bool origRetVal, bool newRetVal) const
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

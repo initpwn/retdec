@@ -4,11 +4,12 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/const_bool.h"
-#include "llvmir2hll/ir/int_type.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/const_bool.h"
+#include "retdec/llvmir2hll/ir/int_type.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -18,11 +19,6 @@ namespace llvmir2hll {
 */
 ConstBool::ConstBool(Type value):
 	Constant(), value(value), type(IntType::create(1, false)) {}
-
-/**
-* @brief Destructs the constant.
-*/
-ConstBool::~ConstBool() {}
 
 ShPtr<Value> ConstBool::clone() {
 	ShPtr<ConstBool> constBool(ConstBool::create(value));
@@ -90,3 +86,4 @@ void ConstBool::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

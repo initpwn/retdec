@@ -4,22 +4,23 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/assign_stmt.h"
-#include "llvmir2hll/ir/break_stmt.h"
-#include "llvmir2hll/ir/const_bool.h"
-#include "llvmir2hll/ir/empty_stmt.h"
-#include "llvmir2hll/ir/expression.h"
-#include "llvmir2hll/ir/if_stmt.h"
-#include "llvmir2hll/ir/not_op_expr.h"
-#include "llvmir2hll/ir/return_stmt.h"
-#include "llvmir2hll/ir/statement.h"
-#include "llvmir2hll/ir/while_loop_stmt.h"
-#include "llvmir2hll/optimizer/optimizers/while_true_to_while_cond_optimizer.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/expression_negater.h"
-#include "llvmir2hll/utils/ir.h"
-#include "llvmir2hll/utils/loop_optimizer.h"
+#include "retdec/llvmir2hll/ir/assign_stmt.h"
+#include "retdec/llvmir2hll/ir/break_stmt.h"
+#include "retdec/llvmir2hll/ir/const_bool.h"
+#include "retdec/llvmir2hll/ir/empty_stmt.h"
+#include "retdec/llvmir2hll/ir/expression.h"
+#include "retdec/llvmir2hll/ir/if_stmt.h"
+#include "retdec/llvmir2hll/ir/not_op_expr.h"
+#include "retdec/llvmir2hll/ir/return_stmt.h"
+#include "retdec/llvmir2hll/ir/statement.h"
+#include "retdec/llvmir2hll/ir/while_loop_stmt.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/while_true_to_while_cond_optimizer.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/expression_negater.h"
+#include "retdec/llvmir2hll/utils/ir.h"
+#include "retdec/llvmir2hll/utils/loop_optimizer.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -34,11 +35,6 @@ WhileTrueToWhileCondOptimizer::WhileTrueToWhileCondOptimizer(ShPtr<Module> modul
 	FuncOptimizer(module) {
 		PRECONDITION_NON_NULL(module);
 	}
-
-/**
-* @brief Destructs the optimizer.
-*/
-WhileTrueToWhileCondOptimizer::~WhileTrueToWhileCondOptimizer() {}
 
 void WhileTrueToWhileCondOptimizer::visit(ShPtr<WhileLoopStmt> stmt) {
 	// First of all, visit nested and subsequent statements.
@@ -178,7 +174,7 @@ void WhileTrueToWhileCondOptimizer::visit(ShPtr<WhileLoopStmt> stmt) {
 	// to the first statement of the new loop.
 	if (stmt->getBody()->getMetadata() != "") {
 		// An empty statement need to be used.
-		ShPtr<EmptyStmt> emptyStmt(EmptyStmt::create());
+		ShPtr<EmptyStmt> emptyStmt(EmptyStmt::create(nullptr, stmt->getAddress()));
 		emptyStmt->setMetadata(firstStmtMetadata);
 		stmt->getBody()->prependStatement(emptyStmt);
 	} else {
@@ -199,3 +195,4 @@ void WhileTrueToWhileCondOptimizer::visit(ShPtr<WhileLoopStmt> stmt) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

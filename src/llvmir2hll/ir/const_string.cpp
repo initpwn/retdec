@@ -9,11 +9,12 @@
 #include <iomanip>
 #include <sstream>
 
-#include "llvmir2hll/ir/const_string.h"
-#include "llvmir2hll/ir/string_type.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/const_string.h"
+#include "retdec/llvmir2hll/ir/string_type.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -24,11 +25,6 @@ namespace llvmir2hll {
 ConstString::ConstString(const UnderlyingStringType &value, std::size_t charSize):
 	Constant(), value(value), charSize(charSize),
 	type(StringType::create(charSize)) {}
-
-/**
-* @brief Destructs the constant.
-*/
-ConstString::~ConstString() {}
 
 ShPtr<Value> ConstString::clone() {
 	auto constString = ConstString::create(value, charSize);
@@ -66,7 +62,7 @@ ConstString::UnderlyingStringType ConstString::getValue() const {
 * @brief Returns the constant's value as an escaped C string.
 */
 std::string ConstString::getValueAsEscapedCString() const {
-	return tl_cpputils::asEscapedCString(value, charSize);
+	return retdec::utils::asEscapedCString(value, charSize);
 }
 
 /**
@@ -119,3 +115,4 @@ void ConstString::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

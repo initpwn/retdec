@@ -1,5 +1,5 @@
 
-set(LLVMIR2HLL_TESTS_SOURCES
+add_executable(tests-llvmir2hll
 	analysis/alias_analysis/alias_analyses/simple_alias_analysis_tests.cpp
 	analysis/break_in_if_analysis_tests.cpp
 	analysis/goto_target_analysis_tests.cpp
@@ -16,14 +16,14 @@ set(LLVMIR2HLL_TESTS_SOURCES
 	graphs/cfg/cfg_traversals/lhs_rhs_uses_cfg_traversal_tests.cpp
 	hll/bracket_managers/c_bracket_manager_tests.cpp
 	hll/bracket_managers/no_bracket_manager_tests.cpp
-	hll/bracket_managers/py_bracket_manager_tests.cpp
 	hll/compound_op_managers/c_compound_op_manager_tests.cpp
 	hll/compound_op_managers/compound_op_manager_tests.cpp
 	hll/compound_op_managers/no_compound_op_manager_tests.cpp
-	hll/compound_op_managers/py_compound_op_manager_tests.cpp
 	hll/hll_writers/c_hll_writer_tests.cpp
 	hll/hll_writers/hll_writer_tests.cpp
-	hll/hll_writers/py_hll_writer_tests.cpp
+	hll/output_managers/json_manager_tests.cpp
+	hll/output_managers/output_manager_tests.cpp
+	hll/output_managers/plain_manager_tests.cpp
 	ir/array_index_op_expr_tests.cpp
 	ir/array_type_tests.cpp
 	ir/assign_stmt_tests.cpp
@@ -55,39 +55,35 @@ set(LLVMIR2HLL_TESTS_SOURCES
 	ir/void_type_tests.cpp
 	llvm/llvm_intrinsic_converter_tests.cpp
 	llvm/llvm_support_tests.cpp
-	llvm/llvmir2bir_converter_tests.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter/basic_block_converter_tests.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter/cfg_node_tests.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter/llvm_value_converter_tests/llvm_constant_converter_tests.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter/llvm_value_converter_tests/llvm_constant_converter_tests_by_llvmir.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter/llvm_value_converter_tests/llvm_fcmp_converter_constants_tests.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter/llvm_value_converter_tests/llvm_fcmp_converter_tests.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter/llvm_value_converter_tests/llvm_instruction_converter_constants_tests.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter/llvm_value_converter_tests/llvm_instruction_converter_tests.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter/llvm_value_converter_tests/llvm_type_converter_tests.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter/llvm_value_converter_tests/tests_with_llvm_value_converter.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter/structure_converter_tests.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter/variables_manager_tests.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter_tests/base_tests.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter_tests/functions_tests.cpp
-	llvm/llvmir2bir_converters/new_llvmir2bir_converter_tests/glob_vars_tests.cpp
-	llvm/llvmir2bir_converters/orig_llvmir2bir_converter/labels_handler_tests.cpp
-	llvm/llvmir2bir_converters/orig_llvmir2bir_converter_tests.cpp
+	llvm/llvmir2bir_converter/basic_block_converter_tests.cpp
+	llvm/llvmir2bir_converter/cfg_node_tests.cpp
+	llvm/llvmir2bir_converter/labels_handler_tests.cpp
+	llvm/llvmir2bir_converter/llvm_value_converter_tests/llvm_constant_converter_tests.cpp
+	llvm/llvmir2bir_converter/llvm_value_converter_tests/llvm_constant_converter_tests_by_llvmir.cpp
+	llvm/llvmir2bir_converter/llvm_value_converter_tests/llvm_fcmp_converter_constants_tests.cpp
+	llvm/llvmir2bir_converter/llvm_value_converter_tests/llvm_fcmp_converter_tests.cpp
+	llvm/llvmir2bir_converter/llvm_value_converter_tests/llvm_instruction_converter_constants_tests.cpp
+	llvm/llvmir2bir_converter/llvm_value_converter_tests/llvm_instruction_converter_tests.cpp
+	llvm/llvmir2bir_converter/llvm_value_converter_tests/llvm_type_converter_tests.cpp
+	llvm/llvmir2bir_converter/llvm_value_converter_tests/tests_with_llvm_value_converter.cpp
+	llvm/llvmir2bir_converter/structure_converter_tests.cpp
+	llvm/llvmir2bir_converter/variables_manager_tests.cpp
+	llvm/llvmir2bir_converter_tests/base_tests.cpp
+	llvm/llvmir2bir_converter_tests/functions_tests.cpp
+	llvm/llvmir2bir_converter_tests/glob_vars_tests.cpp
 	llvm/string_conversions_tests.cpp
-	optimizer/optimizers/auxiliary_variables_optimizer_tests.cpp
 	optimizer/optimizers/bit_op_to_log_op_optimizer_tests.cpp
 	optimizer/optimizers/bit_shift_optimizer_tests.cpp
 	optimizer/optimizers/break_continue_return_optimizer_tests.cpp
 	optimizer/optimizers/c_array_arg_optimizer_tests.cpp
 	optimizer/optimizers/copy_propagation_optimizer_tests.cpp
 	optimizer/optimizers/dead_code_optimizer_tests.cpp
-	optimizer/optimizers/dead_global_assign_optimizer_tests.cpp
 	optimizer/optimizers/dead_local_assign_optimizer_tests.cpp
 	optimizer/optimizers/deref_address_optimizer_tests.cpp
 	optimizer/optimizers/deref_to_array_index_optimizer_tests.cpp
 	optimizer/optimizers/empty_array_to_string_optimizer_tests.cpp
 	optimizer/optimizers/empty_stmt_optimizer_tests.cpp
-	optimizer/optimizers/global_to_local_optimizer_tests.cpp
+	optimizer/optimizers/goto_stmt_optimizer_tests.cpp
 	optimizer/optimizers/if_before_loop_optimizer_tests.cpp
 	optimizer/optimizers/if_structure_optimizer_tests.cpp
 	optimizer/optimizers/if_to_switch_optimizer_tests.cpp
@@ -110,7 +106,6 @@ set(LLVMIR2HLL_TESTS_SOURCES
 	optimizer/optimizers/simplify_arithm_expr/three_operands_sub_optimizer_tests.cpp
 	optimizer/optimizers/simplify_arithm_expr/zero_sub_optimizer_tests.cpp
 	optimizer/optimizers/simplify_arithm_expr_optimizer_tests.cpp
-	optimizer/optimizers/unreachable_code_optimizer_tests.cpp
 	optimizer/optimizers/unused_global_var_optimizer_tests.cpp
 	optimizer/optimizers/var_def_for_loop_optimizer_tests.cpp
 	optimizer/optimizers/var_def_stmt_optimizer_tests.cpp
@@ -134,14 +129,11 @@ set(LLVMIR2HLL_TESTS_SOURCES
 	semantics/semantics/libc_semantics_tests.cpp
 	semantics/semantics/win_api_semantics_tests.cpp
 	support/const_symbol_converter_tests.cpp
-	support/funcs_with_prefix_remover_tests.cpp
 	support/global_vars_sorter_tests.cpp
 	support/headers_for_declared_funcs_tests.cpp
 	support/library_funcs_remover_tests.cpp
-	support/maybe_tests.cpp
 	support/struct_types_sorter_tests.cpp
 	support/unreachable_code_in_cfg_remover_tests.cpp
-	support/unreachable_funcs_remover_tests.cpp
 	utils/ir_tests.cpp
 	utils/string_tests.cpp
 	validator/validators/break_outside_loop_validator_tests.cpp
@@ -155,7 +147,22 @@ set(LLVMIR2HLL_TESTS_SOURCES
 	var_renamer/var_renamers/unified_var_renamer_tests.cpp
 )
 
-add_executable(llvmir2hll-tests ${LLVMIR2HLL_TESTS_SOURCES})
-target_link_libraries(llvmir2hll-tests llvmir2hll tl-cpputils gmock_main)
-target_include_directories(llvmir2hll-tests PUBLIC ${PROJECT_SOURCE_DIR}/tests/)
-install(TARGETS llvmir2hll-tests RUNTIME DESTINATION bin/unit-tests)
+target_include_directories(tests-llvmir2hll
+	PRIVATE
+		${RETDEC_TESTS_DIR}
+)
+
+target_link_libraries(tests-llvmir2hll
+	retdec::llvmir2hll
+	retdec::utils
+	retdec::deps::gmock_main
+)
+
+set_target_properties(tests-llvmir2hll
+	PROPERTIES
+		OUTPUT_NAME "retdec-tests-llvmir2hll"
+)
+
+install(TARGETS tests-llvmir2hll
+	RUNTIME DESTINATION ${RETDEC_INSTALL_TESTS_DIR}
+)

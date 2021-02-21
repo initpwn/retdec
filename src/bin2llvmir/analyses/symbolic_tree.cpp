@@ -4,7 +4,6 @@
  * @copyright (c) 2017 Avast Software, licensed under the MIT license
  */
 
-#include <iostream>
 #include <ostream>
 #include <sstream>
 
@@ -12,58 +11,68 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Operator.h>
 
-#include "llvm-support/utils.h"
-#include "tl-cpputils/string.h"
-#include "bin2llvmir/analyses/symbolic_tree.h"
-#include "bin2llvmir/providers/config.h"
-#include "bin2llvmir/utils/defs.h"
+#include "retdec/utils/string.h"
+#include "retdec/bin2llvmir/analyses/symbolic_tree.h"
+#include "retdec/bin2llvmir/utils/llvm.h"
+#include "retdec/bin2llvmir/providers/asm_instruction.h"
+#include "retdec/bin2llvmir/providers/config.h"
+#include "retdec/bin2llvmir/utils/debug.h"
+#include "retdec/bin2llvmir/utils/symbolic_tree_match.h"
 
-using namespace llvm_support;
 using namespace llvm;
+using namespace retdec::bin2llvmir::st_match;
 
 #define debug_enabled false
 
+namespace retdec {
 namespace bin2llvmir {
 
-SymbolicTree::SymbolicTree(
+SymbolicTree SymbolicTree::PrecomputedRda(
+		ReachingDefinitionsAnalysis& rda,
+		llvm::Value* v,
+		unsigned maxNodeLevel)
+{
+	return SymbolicTree(&rda, v, nullptr, 0, maxNodeLevel, nullptr, false);
+}
+
+SymbolicTree SymbolicTree::PrecomputedRdaWithValueMap(
 		ReachingDefinitionsAnalysis& rda,
 		llvm::Value* v,
 		std::map<llvm::Value*, llvm::Value*>* val2val,
-		unsigned maxUniqueNodes,
-		bool debug)
-		:
-		value(v)
+		unsigned maxNodeLevel)
 {
-	assert(value != nullptr);
+	_val2valUsed = false;
+	return SymbolicTree(&rda, v, nullptr, 0, maxNodeLevel, val2val, false);
+}
 
-	if (val2val)
-	{
-		auto fIt = val2val->find(value);
-		if (fIt != val2val->end())
-		{
-			value = fIt->second;
-			_val2valUsed = true;
-			return;
-		}
-	}
+SymbolicTree SymbolicTree::OnDemandRda(
+		llvm::Value* v,
+		unsigned maxNodeLevel)
+{
+	return SymbolicTree(nullptr, v, nullptr, 0, maxNodeLevel, nullptr, false);
+}
 
-	std::unordered_set<Value*> processed;
-	expandNode(&rda, val2val, maxUniqueNodes, processed);
-	propagateFlags();
+SymbolicTree SymbolicTree::Linear(
+		llvm::Value* v,
+		unsigned maxNodeLevel)
+{
+	return SymbolicTree(nullptr, v, nullptr, 0, maxNodeLevel, nullptr, true);
 }
 
 SymbolicTree::SymbolicTree(
 		ReachingDefinitionsAnalysis* rda,
 		llvm::Value* v,
 		llvm::Value* u,
-		std::unordered_set<llvm::Value*>& processed,
-		unsigned maxUniqueNodes,
-		std::map<llvm::Value*, llvm::Value*>* val2val)
+		unsigned nodeLevel,
+		unsigned maxNodeLevel,
+		std::map<llvm::Value*, llvm::Value*>* val2val,
+		bool linear)
 		:
 		value(v),
-		user(u)
+		user(u),
+		_level(nodeLevel)
 {
-	assert(value != nullptr);
+	ops.reserve(_naryLimit);
 
 	if (val2val)
 	{
@@ -76,15 +85,17 @@ SymbolicTree::SymbolicTree(
 		}
 	}
 
-	if (processed.size() < maxUniqueNodes)
+	if (getLevel() == maxNodeLevel)
 	{
-		expandNode(rda, val2val, maxUniqueNodes, processed);
-	}
-	else
-	{
-		_failed = true;
 		return;
 	}
+
+	expandNode(rda, val2val, maxNodeLevel, linear);
+}
+
+unsigned SymbolicTree::getLevel() const
+{
+	return _level;
 }
 
 SymbolicTree& SymbolicTree::operator=(SymbolicTree&& other)
@@ -94,273 +105,293 @@ SymbolicTree& SymbolicTree::operator=(SymbolicTree&& other)
 		value = other.value;
 		user = other.user;
 		// Do NOT use `ops = std::move(other.ops);` to allow use like
-		// `*this = ops[0];`. Use std::swap() instead. See #1581.
+		// `*this = ops[0];`. Use std::swap() instead.
 		std::swap(ops, other.ops);
-		_failed = other._failed;
 	}
 	return *this;
+}
+
+bool SymbolicTree::operator==(const SymbolicTree& o) const
+{
+	if (ops != o.ops)
+	{
+		return false;
+	}
+	if (isa<Constant>(value) && isa<Constant>(o.value))
+	{
+		return value == o.value;
+	}
+	else if (isa<Instruction>(value) && isa<Instruction>(o.value))
+	{
+		auto* i1 = cast<Instruction>(value);
+		auto* i2 = cast<Instruction>(o.value);
+		return i1->isSameOperationAs(i2);
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool SymbolicTree::operator!=(const SymbolicTree& o) const
+{
+	return !(*this == o);
 }
 
 void SymbolicTree::expandNode(
 		ReachingDefinitionsAnalysis* RDA,
 		std::map<llvm::Value*, llvm::Value*>* val2val,
-		unsigned maxUniqueNodes,
-		std::unordered_set<llvm::Value*>& processed)
+		unsigned maxNodeLevel,
+		bool linear)
 {
-	auto fIt = processed.find(value);
-	if (fIt != processed.end())
+	if (auto* l = dyn_cast<LoadInst>(value))
 	{
-		return;
-	}
-
-	if (User* U = dyn_cast<User>(value))
-	{
-		processed.insert(value);
-		Instruction *I = dyn_cast<Instruction>(value);
-
-		if (auto* l = dyn_cast<LoadInst>(value))
+		if (!_trackThroughAllocaLoads
+				&& isa<AllocaInst>(l->getPointerOperand()))
 		{
-			auto uses = RDA->defsFromUse(I);
-			for (auto* u : uses)
-			{
-				ops.emplace_back(
-						RDA,
-						u->def,
-						I,
-						processed,
-						maxUniqueNodes,
-						val2val);
-			}
+			return;
+		}
 
-			if (ops.empty())
+		if (_trackOnlyFlagRegisters
+				&& _abi
+				&& _abi->isRegister(l->getPointerOperand())
+				&& !_abi->isFlagRegister(l->getPointerOperand()))
+		{
+			return;
+		}
+
+		if (!_trackThroughGeneralRegisterLoads
+				&& _abi
+				&& _abi->isGeneralPurposeRegister(l->getPointerOperand()))
+		{
+			return;
+		}
+
+		if (linear)
+		{
+			std::unordered_set<BasicBlock*> seenBbs;
+			auto* bb = l->getParent();
+			Instruction* prev = l;
+			while (prev)
 			{
-				ops.emplace_back(
-						RDA,
-						l->getPointerOperand(),
-						l,
-						processed,
-						maxUniqueNodes,
-						val2val);
+				auto* s = dyn_cast<StoreInst>(prev);
+				if (s && s->getPointerOperand() == l->getPointerOperand())
+				{
+					ops.emplace_back(
+							RDA,
+							s,
+							l,
+							getLevel() + 1,
+							maxNodeLevel,
+							val2val,
+							linear);
+					break;
+				}
+
+				prev = prev->getPrevNode();
+
+				if (prev == nullptr)
+				{
+					seenBbs.insert(bb);
+
+					bb = bb->getSinglePredecessor();
+					if (bb && seenBbs.count(bb) == 0)
+					{
+						prev = &bb->back();
+					}
+				}
 			}
 		}
-		else if (isa<StoreInst>(value))
+		else if (RDA && RDA->wasRun())
+		{
+			auto defs = RDA->defsFromUse(l);
+			if (defs.size() > _naryLimit)
+			{
+// TODO!!! replace with invalid tree
+				ops.emplace_back(
+						RDA,
+						UndefValue::get(l->getType()),
+						l,
+						getLevel() + 1,
+						maxNodeLevel,
+						val2val,
+						linear);
+				return;
+			}
+			else
+			for (auto* d : defs)
+			{
+				ops.emplace_back(
+						RDA,
+						d->def,
+						l,
+						getLevel() + 1,
+						maxNodeLevel,
+						val2val,
+						linear);
+			}
+		}
+		else
+		{
+			auto defs = ReachingDefinitionsAnalysis::defsFromUse_onDemand(l);
+			if (defs.size() > _naryLimit)
+			{
+// TODO!!! replace with invalid tree
+				ops.emplace_back(
+						RDA,
+						UndefValue::get(l->getType()),
+						l,
+						getLevel() + 1,
+						maxNodeLevel,
+						val2val,
+						linear);
+				return;
+			}
+
+			for (auto* d : defs)
+			{
+				ops.emplace_back(
+						RDA,
+						d,
+						l,
+						getLevel() + 1,
+						maxNodeLevel,
+						val2val,
+						linear);
+			}
+		}
+
+// TODO!!!!! Do not replace register with their default values down the line.
+		if (!linear && ops.empty())
 		{
 			ops.emplace_back(
 					RDA,
-					I->getOperand(0),
-					I,
-					processed,
-					maxUniqueNodes,
-					val2val);
+					l->getPointerOperand(),
+					l,
+					getLevel() + 1,
+					maxNodeLevel,
+					val2val,
+					linear);
 		}
-		else if (isa<AllocaInst>(value) || isa<CallInst>(value))
+	}
+	else if (auto* s = dyn_cast<StoreInst>(value))
+	{
+		if (_simplifyAtCreation)
 		{
-			// nothing
+			*this = SymbolicTree(
+					RDA,
+					s->getValueOperand(),
+					s,
+					getLevel(),
+					maxNodeLevel,
+					val2val,
+					linear);
 		}
 		else
 		{
-			for (unsigned i = 0; i < U->getNumOperands(); ++i)
-			{
-				ops.emplace_back(
-						RDA,
-						U->getOperand(i),
-						U,
-						processed,
-						maxUniqueNodes,
-						val2val);
-			}
+			ops.emplace_back(
+					RDA,
+					s->getValueOperand(),
+					s,
+					getLevel() + 1,
+					maxNodeLevel,
+					val2val,
+					linear);
 		}
 	}
-	else
+	else if (isa<AllocaInst>(value)
+			|| isa<CallInst>(value)
+			|| (_abi
+					&& _abi->isRegister(value)
+					&& !_abi->isStackPointerRegister(value)
+					&& !_abi->isZeroRegister(value)
+					&& value != _abi->getRegister(MIPS_REG_GP, _abi->isMips())))
 	{
 		// nothing
 	}
-}
-
-void SymbolicTree::propagateFlags()
-{
-	for (auto &o : ops)
+	else if (_simplifyAtCreation
+			&& (isa<CastInst>(value) || isa<ConstantExpr>(value)))
 	{
-		o.propagateFlags();
-		_failed |= o._failed;
-		_val2valUsed |= o._val2valUsed;
+		auto* U = cast<User>(value);
+		*this = SymbolicTree(
+				RDA,
+				U->getOperand(0),
+				U,
+				getLevel(),
+				maxNodeLevel,
+				val2val,
+				linear);
 	}
-}
-
-bool SymbolicTree::isConstructedSuccessfully() const
-{
-	return !_failed;
-}
-
-bool SymbolicTree::isVal2ValMapUsed() const
-{
-	return _val2valUsed;
-}
-
-void SymbolicTree::removeRegisterValues(Config* config)
-{
-	for (auto &o : ops)
+	else if (User* U = dyn_cast<User>(value))
 	{
-		o.removeRegisterValues(config);
-	}
-
-	if (config->isRegister(value))
-	{
-		ops.clear();
-	}
-}
-
-/**
- * Transform:
- * >|   %u2_80483ca = load i32, i32* eax, align 4
- *     >|   X
- *     >|   ...
- * into:
- * >|   %u2_80483ca = load i32, i32* eax, align 4
- */
-void SymbolicTree::removeGeneralRegisterLoads(Config* config)
-{
-	for (auto &o : ops)
-	{
-		o.removeGeneralRegisterLoads(config);
-	}
-
-	if (auto* l = dyn_cast<LoadInst>(value))
-	{
-		auto* r = l->getPointerOperand();
-		if (config->isRegister(r) && !config->isFlagRegister(r))
+		for (unsigned i = 0; i < U->getNumOperands(); ++i)
 		{
-			ops.clear();
+			ops.emplace_back(
+					RDA,
+					U->getOperand(i),
+					U,
+					getLevel() + 1,
+					maxNodeLevel,
+					val2val,
+					linear);
 		}
 	}
 }
 
-/**
- * Transform:
- * >|   %u2_80483ca = load i32, i32* %stack, align 4
- *     >|   X
- *     >|   ...
- * into:
- * >|   %u2_80483ca = load i32, i32* %stack, align 4
- */
-void SymbolicTree::removeStackLoads(Config* config)
+void SymbolicTree::simplifyNode()
 {
-	for (auto &o : ops)
-	{
-		o.removeStackLoads(config);
-	}
-
-	if (auto* l = dyn_cast<LoadInst>(value))
-	{
-		auto* s = l->getPointerOperand();
-		if (config->isStackVariable(s))
-		{
-			ops.clear();
-		}
-	}
+	_simplifyNode();
+	fixLevel();
 }
 
-void SymbolicTree::simplifyNode(Config* config)
+void SymbolicTree::_simplifyNode()
 {
-	simplifyNodeLoadStore();
-	_simplifyNode(config);
-}
-
-//>|   %371 = load i32, i32* @gp, align 4
-//        >|   store i32 %298, i32* @gp, align 4
-//                >|   %298 = load i32, i32* %stack_var_-4776
-//                        >|   store i32 %18, i32* %stack_var_-4776
-//                                >|   %18 = load i32, i32* @gp, align 4
-//                                        >|   store i32 %4, i32* @gp, align 4
-//                                                >|   %4 = add i32 %3, %2
-//                                                        >|   %3 = load i32, i32* @t9, align 4
-//                                                                >|   store i32 4223068, i32* @t9, align 4
-//                                                                        >| i32 4223068
-//                                                        >|   %2 = load i32, i32* @gp, align 4
-//                                                                >|   store i32 %1, i32* @gp, align 4
-//                                                                        >|   %1 = add i32 %0, -9372
-//                                                                                >|   %0 = load i32, i32* @gp, align 4
-//                                                                                        >|   store i32 393216, i32* @gp, align 4
-//                                                                                                >| i32 393216
-//                                                                                >| i32 -9372
-//        >|   store i32 %351, i32* @gp, align 4
-//                >|   %351 = load i32, i32* %stack_var_-4776
-//                        >|   store i32 %18, i32* %stack_var_-4776
-void SymbolicTree::simplifyNodeLoadStore()
-{
-	for (auto &o : ops)
-	{
-		o.simplifyNodeLoadStore();
-	}
-
-	auto* l = dyn_cast<LoadInst>(value);
-	if (l == nullptr || ops.size() != 2) // TODO: generalize for ops.size() > 1
-	{
-		return;
-	}
-
-	SymbolicTree* op0 = &ops[0];
-	std::set<Value*> op0Vals;
-
-	while (isa<LoadInst>(op0->value)
-			|| isa<StoreInst>(op0->value)
-			|| isa<CastInst>(op0->value))
-	{
-		op0Vals.insert(op0->value);
-		if (op0->ops.size() == 1)
-		{
-			op0 = &op0->ops[0];
-		}
-		else
-		{
-			break;
-		}
-	}
-
-	SymbolicTree* op1 = &ops[1];
-	while (isa<LoadInst>(op1->value)
-			|| isa<StoreInst>(op1->value)
-			|| isa<CastInst>(op1->value))
-	{
-		if (op0Vals.count(op1->value))
-		{
-			*this = std::move(ops[0]);
-			return;
-		}
-		else if (op1->ops.size() == 1)
-		{
-			op1 = &op1->ops[0];
-		}
-		else
-		{
-			return;
-		}
-	}
-}
-
-void SymbolicTree::_simplifyNode(Config* config)
-{
-	for (auto &o : ops)
-	{
-		o._simplifyNode(config);
-	}
-
 	if (ops.empty())
 	{
 		return;
 	}
 
-	if (isa<PtrToIntInst>(value) ||
-	    isa<IntToPtrInst>(value))
+	for (auto &o : ops)
+	{
+		o._simplifyNode();
+	}
+
+	if (isa<LoadInst>(value) && ops.size() > 1)
+	{
+		bool allEq = true;
+
+		SymbolicTree& op0 = ops[0];
+		for (auto &o : ops)
+		{
+			if (op0 != o)
+			{
+				allEq = false;
+				break;
+			}
+		}
+
+		if (allEq)
+		{
+			ops.erase(ops.begin()+1, ops.end());
+		}
+	}
+
+	Value* val = nullptr;
+	LoadInst* load = nullptr;
+	GlobalVariable* global = nullptr;
+	ConstantInt* c1 = nullptr;
+	ConstantInt* c2 = nullptr;
+
+	if (isa<CastInst>(value))
 	{
 		*this = std::move(ops[0]);
 	}
-	// PtrToIntInst && IntToPtrInst inherit from CastInst.
-	// maybe this is to general and we do not want to skip all possible casts.
-	//
-	else if (isa<CastInst>(value))
+	else if (ConstantExpr* ce = dyn_cast<ConstantExpr>(value))
 	{
-		*this = std::move(ops[0]);
+		if (ce->isCast())
+		{
+			*this = std::move(ops[0]);
+		}
 	}
 	else if (isa<StoreInst>(value))
 	{
@@ -368,137 +399,83 @@ void SymbolicTree::_simplifyNode(Config* config)
 	}
 	// MIPS, use function address for t9.
 	//
-	else if (config->isMipsOrPic32()
-			&& isa<LoadInst>(value)
-			&& ops.size() == 1
-			&& isa<GlobalVariable>(ops[0].value)
-			&& cast<GlobalVariable>(ops[0].value)->getName() == "t9"
-			&& ops[0].ops.size() == 1
-			&& isa<ConstantInt>(ops[0].ops[0].value)
-			&& cast<ConstantInt>(ops[0].ops[0].value)->isZero())
+	else if (_abi->isMips()
+			&& match(*this, m_Load(
+					m_Specific(_abi->getRegister(MIPS_REG_T9)),
+					&load)))
 	{
-		auto* l = cast<LoadInst>(value);
-		auto addr = config->getFunctionAddress(l->getFunction());
-		auto* ci = cast<ConstantInt>(ops[0].ops[0].value);
-		ops[0].ops[0].value = ConstantInt::get(ci->getType(), addr);
-		*this = std::move(ops[0].ops[0]);
+		auto addr = AsmInstruction::getFunctionAddress(load->getFunction());
+		value = ConstantInt::get(load->getType(), addr);
+		ops.clear();
 	}
-	// >|  %addr = load @gv_1
-	//     >|  @gv_1 = value
-	// =>
-	// >|  value
-	//
-	else if (isa<LoadInst>(value)
-			&& ops.size() == 1
-			&& isa<GlobalVariable>(ops[0].value)
-			&& ops[0].value == dyn_cast<LoadInst>(value)->getOperand(0)
+	else if (match(*this, m_Load(m_GlobalVariable(global), &load))
+			&& global == load->getPointerOperand()
 			&& ops[0].ops.size() == 1)
 	{
 		*this = std::move(ops[0].ops[0]);
 	}
-	else if (auto* l = dyn_cast<LoadInst>(value))
-	{
-			auto* ptr = l->getPointerOperand();
-			ptr = skipCasts(ptr);
-			if (isa<AllocaInst>(ptr) || isa<GlobalVariable>(ptr))
-			{
-					if (ops.size() == 1)
-					{
-							*this = std::move(ops[0]);
-					}
-			}
-	}
-	else if (ConstantExpr* ce = dyn_cast<ConstantExpr>(value))
-	{
-		if (ce->isCast())
-			*this = std::move(ops[0]);
-	}
-	else if (ops.size() == 2
-			&& isa<ConstantInt>(ops[0].value)
-			&& isa<ConstantInt>(ops[1].value))
-	{
-		ConstantInt* op1 = cast<ConstantInt>(ops[0].value);
-		ConstantInt* op2 = cast<ConstantInt>(ops[1].value);
-
-		if (isa<AddOperator>(value))
-		{
-			value = ConstantInt::get(
-					op1->getType(),
-					op1->getSExtValue() + op2->getSExtValue());
-			ops.clear();
-		}
-		else if (auto* op = dyn_cast<BinaryOperator>(value))
-		{
-			if (op->getOpcode() == BinaryOperator::Or)
-			{
-				value = ConstantInt::get(
-						op1->getType(),
-						op1->getSExtValue() | op2->getSExtValue());
-				ops.clear();
-			}
-			else if (op->getOpcode() == BinaryOperator::And)
-			{
-				value = ConstantInt::get(
-						op1->getType(),
-						op1->getSExtValue() & op2->getSExtValue());
-				ops.clear();
-			}
-		}
-	}
-	else if (ops.size() == 2
-			&& isa<GlobalVariable>(ops[0].value)
-			&& ops[0].user
-			&& !isa<LoadInst>(ops[0].user)
-			&& isa<ConstantInt>(ops[1].value))
-	{
-		GlobalVariable* op1 = cast<GlobalVariable>(ops[0].value);
-		ConstantInt* op2 = cast<ConstantInt>(ops[1].value);
-
-		if (config)
-		{
-			auto* cgv = config->getConfigGlobalVariable(op1);
-			if (isa<AddOperator>(value) && cgv)
-			{
-				value = ConstantInt::get(
-						op2->getType(),
-						cgv->getStorage().getAddress() + op2->getSExtValue());
-				ops.clear();
-			}
-		}
-	}
-	// TODO: this is to specific, make it more general to catch more patterns.
-	//
-	// >|   %u3_401566 = add i32 %u2_401566, 8
-	// >|   %phitmp_401560 = add i32 %u1_401560, -4
-	//        >| @esp = internal global i32 0
-	//        >| i32 -4
-	// >| i32 8
-	//
-	// >|   %u3_401566 = add i32 %u2_401566, 8
-	// >| @esp = internal global i32 0
-	// >| i32 4
-	//
-	else if (ops.size() == 2
-			&& isa<AddOperator>(value)
-			&& isa<AddOperator>(ops[0].value)
-			&& ops[0].ops.size() == 2
-			&& isa<ConstantInt>(ops[0].ops[1].value)
-			&& isa<ConstantInt>(ops[1].value))
-	{
-		ConstantInt* ci1 = cast<ConstantInt>(ops[0].ops[1].value);
-		ConstantInt* ci2 = cast<ConstantInt>(ops[1].value);
-
-		ops[0] = std::move(ops[0].ops[0]);
-		ops[1].value = ConstantInt::get(
-				ci1->getType(),
-				ci1->getSExtValue() + ci2->getSExtValue());
-	}
-	else if (ops.size() == 2
-			&& (isa<AddOperator>(value) || isa<SubOperator>(value))
-			&& isa<ConstantInt>(ops[1].value)
-			&& cast<ConstantInt>(ops[1].value)->isZero())
+	else if (match(*this, m_Load(m_Value(val), &load))
+			&& (isa<AllocaInst>(llvm_utils::skipCasts(load->getPointerOperand()))
+			|| isa<GlobalVariable>(llvm_utils::skipCasts(load->getPointerOperand()))))
 	{
 		*this = std::move(ops[0]);
+	}
+	else if (match(*this, m_Add(m_ConstantInt(c1), m_ConstantInt(c2))))
+	{
+		value = ConstantInt::get(
+				c1->getType(),
+				c1->getSExtValue() + c2->getSExtValue());
+		ops.clear();
+	}
+	else if (match(*this, m_Sub(m_ConstantInt(c1), m_ConstantInt(c2))))
+	{
+		value = ConstantInt::get(
+				c1->getType(),
+				c1->getSExtValue() - c2->getSExtValue());
+		ops.clear();
+	}
+	else if (match(*this, m_Or(m_ConstantInt(c1), m_ConstantInt(c2))))
+	{
+		value = ConstantInt::get(
+				c1->getType(),
+				c1->getSExtValue() | c2->getSExtValue());
+		ops.clear();
+	}
+	else if (match(*this, m_And(m_ConstantInt(c1), m_ConstantInt(c2))))
+	{
+		value = ConstantInt::get(
+				c1->getType(),
+				c1->getSExtValue() & c2->getSExtValue());
+		ops.clear();
+	}
+	else if (match(*this, m_Add(m_GlobalVariable(global), m_ConstantInt(c1)))
+			&& ops[0].user && !isa<LoadInst>(ops[0].user)
+			&& _config)
+	{
+		if (auto addr = _config->getGlobalAddress(global))
+		{
+			value = ConstantInt::get(c1->getType(), addr + c1->getSExtValue());
+			ops.clear();
+		}
+	}
+	else if (match(*this, m_Add(m_Value(), m_Zero()))
+			|| match(*this, m_Sub(m_Value(), m_Zero())))
+	{
+		*this = std::move(ops[0]);
+	}
+	else if (match(*this, m_Add(m_Zero(), m_Value()))
+			|| match(*this, m_Sub(m_Zero(), m_Value())))
+	{
+		*this = std::move(ops[1]);
+	}
+	else if (match(*this, m_Add(
+			m_Add(m_Value(), m_ConstantInt(c1)),
+			m_ConstantInt(c2))))
+	{
+		ops[0] = std::move(ops[0].ops[0]);
+		ops[1].value = ConstantInt::get(
+				c1->getType(),
+				c1->getSExtValue() + c2->getSExtValue());
 	}
 
 	// Move Constants from ops[0] to ops[1].
@@ -589,10 +566,10 @@ std::string SymbolicTree::print(unsigned indent) const
 {
 	std::stringstream out;
 	if (Function* F = dyn_cast<Function>(value))
-		out << tl_cpputils::getIndentation(indent) << ">| "
+		out << retdec::utils::getIndentation(indent) << ">| "
 			<< F->getName().str() << std::endl;
 	else
-		out << tl_cpputils::getIndentation(indent) << ">| "
+		out << retdec::utils::getIndentation(indent) << ">| "
 			<< llvmObjToString(value) << std::endl;
 
 	++indent;
@@ -640,6 +617,23 @@ std::vector<SymbolicTree*> SymbolicTree::getPostOrder() const
 	return ret;
 }
 
+/**
+ * @return Tree nodes linearized using a level-order traversal.
+ */
+std::vector<SymbolicTree*> SymbolicTree::getLevelOrder() const
+{
+	std::vector<SymbolicTree*> ret;
+	_getPreOrder(ret);
+
+	std::stable_sort(ret.begin(), ret.end(),
+			[](const SymbolicTree* a, const SymbolicTree* b) -> bool
+			{
+				return a->getLevel() < b->getLevel();
+			});
+
+	return ret;
+}
+
 void SymbolicTree::_getPreOrder(std::vector<SymbolicTree*>& res) const
 {
 	res.emplace_back(const_cast<SymbolicTree*>(this));
@@ -658,4 +652,118 @@ void SymbolicTree::_getPostOrder(std::vector<SymbolicTree*>& res) const
 	res.emplace_back(const_cast<SymbolicTree*>(this));
 }
 
+void SymbolicTree::fixLevel(unsigned level)
+{
+	if (level == 0)
+	{
+		level = _level;
+	}
+	else
+	{
+		_level = level;
+	}
+	for (auto &o : ops)
+	{
+		o.fixLevel(level + 1);
+	}
+}
+
+bool SymbolicTree::isNullary() const
+{
+	return ops.size() == 0;
+}
+
+bool SymbolicTree::isUnary() const
+{
+	return ops.size() == 1;
+}
+
+bool SymbolicTree::isBinary() const
+{
+	return ops.size() == 2;
+}
+
+bool SymbolicTree::isTernary() const
+{
+	return ops.size() == 3;
+}
+
+bool SymbolicTree::isNary(unsigned N) const
+{
+	return ops.size() == N;
+}
+
+//
+//==============================================================================
+// Static methods.
+//==============================================================================
+//
+
+Abi* SymbolicTree::_abi = nullptr;
+Config* SymbolicTree::_config = nullptr;
+bool SymbolicTree::_val2valUsed = false;
+bool SymbolicTree::_trackThroughAllocaLoads = true;
+bool SymbolicTree::_trackThroughGeneralRegisterLoads = true;
+bool SymbolicTree::_trackOnlyFlagRegisters = false;
+bool SymbolicTree::_simplifyAtCreation = true;
+unsigned SymbolicTree::_naryLimit = 3;
+
+void SymbolicTree::clear()
+{
+	_abi = nullptr;
+	_config = nullptr;
+	setToDefaultConfiguration();
+}
+
+void SymbolicTree::setToDefaultConfiguration()
+{
+	_val2valUsed = false;
+	_trackThroughAllocaLoads = true;
+	_trackThroughGeneralRegisterLoads = true;
+	_trackOnlyFlagRegisters = false;
+	_simplifyAtCreation = true;
+	_naryLimit = 3;
+}
+
+bool SymbolicTree::isVal2ValMapUsed()
+{
+	return _val2valUsed;
+}
+
+void SymbolicTree::setAbi(Abi* abi)
+{
+	_abi = abi;
+}
+
+void SymbolicTree::setConfig(Config* config)
+{
+	_config = config;
+}
+
+void SymbolicTree::setTrackThroughAllocaLoads(bool b)
+{
+	_trackThroughAllocaLoads = b;
+}
+
+void SymbolicTree::setTrackThroughGeneralRegisterLoads(bool b)
+{
+	_trackThroughGeneralRegisterLoads = b;
+}
+
+void SymbolicTree::setTrackOnlyFlagRegisters(bool b)
+{
+	_trackOnlyFlagRegisters = b;
+}
+
+void SymbolicTree::setSimplifyAtCreation(bool b)
+{
+	_simplifyAtCreation = b;
+}
+
+void SymbolicTree::setNaryLimit(unsigned n)
+{
+	_naryLimit = n;
+}
+
 } // namespace bin2llvmir
+} // namespace retdec

@@ -9,14 +9,13 @@
 #include <llvm/IR/PatternMatch.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 
-#include "llvm-support/utils.h"
-#include "bin2llvmir/optimizations/idioms/idioms_gcc.h"
-#include "bin2llvmir/providers/config.h"
+#include "retdec/bin2llvmir/optimizations/idioms/idioms_gcc.h"
+#include "retdec/bin2llvmir/utils/llvm.h"
 
-using namespace llvm_support;
 using namespace llvm;
 using namespace PatternMatch;
 
+namespace retdec {
 namespace bin2llvmir {
 
 /**
@@ -284,23 +283,10 @@ Instruction * IdiomsGCC::exchangeFloatAbs(BasicBlock::iterator iter) const {
 	if (*cnst->getValue().getRawData() != 0x7FFFFFFF)
 		return nullptr;
 
-	Value * fun = M->getOrInsertFunction("fabsf",
-							Type::getFloatTy(Context),
-							Type::getFloatTy(Context),
-							nullptr);
-
-	// TODO: use some method to do this
-	// Add this new idiom function to config.
-	if (getConfig())
-	{
-		retdec_config::Function cf("fabsf");
-		cf.setIsIdiom();
-		cf.returnType.setLlvmIr("float");
-		retdec_config::Object p("a1", retdec_config::Storage::undefined());
-		p.type.setLlvmIr("float");
-		cf.parameters.insert(p);
-		getConfig()->getConfig().functions.insert(cf);
-	}
+	auto* fun = llvm::Intrinsic::getDeclaration(
+			M,
+			llvm::Intrinsic::fabs,
+			Type::getFloatTy(Context));
 
 	// Arguments have to be casted to float
 	if (dl.getTypeSizeInBits(op_x->getType()) != dl.getTypeSizeInBits(Type::getFloatTy(Context)))
@@ -429,12 +415,11 @@ int IdiomsGCC::exchangeCondBitShiftDivMultiBB(Function & f, Pass * pass) const {
 								continue;
 
 							if (! match(op_or, m_Or(m_Value(op_add2), m_ConstantInt(cnst)))
-								 && ! match(op_or, m_Or(m_Value(op_add2), m_ConstantInt(cnst))))
+									&& ! match(op_or, m_Or(m_ConstantInt(cnst), m_Value(op_add2))))
 								continue;
 
 							if (static_cast<int32_t>(*cnst->getValue().getRawData()) != -2)
 								continue;
-
 
 							if (! match(op_add2, m_Add(m_Value(op_v1), m_Value(op_v2))))
 								continue;
@@ -488,8 +473,6 @@ int IdiomsGCC::exchangeCondBitShiftDivMultiBB(Function & f, Pass * pass) const {
 	return num_idioms;
 }
 
-
-
 /**
  * Exchange X = ((A & 0x7FFFFFFF) | (B & 0x80000000)) with copysignf(A, B)
  * or X = ((fabsf(A)) | (B & 0x80000000)) with copysignf(A, B)
@@ -512,12 +495,11 @@ Instruction * IdiomsGCC::exchangeCopysign(BasicBlock::iterator iter) const {
 	if (! match(&val, m_Or(m_Value(op_and1), m_Value(op_and2))))
 		return nullptr;
 
-	// left hand side of or is (A & 0x7FFFFFFF)?
-	if (! match(op_and1, m_And(m_Value(op_a), m_ConstantInt(cnst1)))
-			&& ! match(op_and1, m_And(m_ConstantInt(cnst1), m_Value(op_a))))
+	// left hand side of or is not (A & 0x7FFFFFFF)?
+	if (! match(op_and1, m_c_And(m_Value(op_a), m_ConstantInt(cnst1))))
 	{
 		// left hand side of or is (fabsf(A)?
-		op_and1 = skipCasts(op_and1);
+		op_and1 = llvm_utils::skipCasts(op_and1);
 		if (isa<CallInst>(op_and1)
 				&& cast<CallInst>(op_and1)->getCalledFunction()
 				&& cast<CallInst>(op_and1)->getCalledFunction()->getIntrinsicID() == Intrinsic::fabs)
@@ -525,6 +507,25 @@ Instruction * IdiomsGCC::exchangeCopysign(BasicBlock::iterator iter) const {
 			auto* call = cast<CallInst>(op_and1);
 			op_a = call->getArgOperand(0);
 			cnst1 = cast<ConstantInt>(ConstantInt::get(op_and2->getType(), 0x7FFFFFFF));
+		}
+		else
+		{
+			return nullptr;
+		}
+	}
+
+	// right hand side of or is not (A & 0x7FFFFFFF)?
+	if (! match(op_and2, m_c_And(m_Value(op_a), m_ConstantInt(cnst1))))
+	{
+		// right hand side of or is (fabsf(A)?
+		op_and2 = llvm_utils::skipCasts(op_and2);
+		if (isa<CallInst>(op_and2)
+				&& cast<CallInst>(op_and2)->getCalledFunction()
+				&& cast<CallInst>(op_and2)->getCalledFunction()->getIntrinsicID() == Intrinsic::fabs)
+		{
+			auto* call = cast<CallInst>(op_and2);
+			op_a = call->getArgOperand(0);
+			cnst1 = cast<ConstantInt>(ConstantInt::get(op_and1->getType(), 0x7FFFFFFF));
 		}
 		else
 		{
@@ -543,34 +544,17 @@ Instruction * IdiomsGCC::exchangeCopysign(BasicBlock::iterator iter) const {
 	}
 
 	// right hand side of or
-	if (! match(op_and2, m_And(m_Value(op_b), m_ConstantInt(cnst2)))
-			&& ! match(op_and2, m_And(m_ConstantInt(cnst2), m_Value(op_b))))
+	if (! match(op_and2, m_c_And(m_Value(op_b), m_ConstantInt(cnst2)))
+			&& ! match(op_and1, m_c_And(m_Value(op_b), m_ConstantInt(cnst2))))
 		return nullptr;
 
 	if (*cnst2->getValue().getRawData() != second_cnst)
 		return nullptr;
 
-	Value * fun = M->getOrInsertFunction("copysignf",
-							Type::getFloatTy(Context),
-							Type::getFloatTy(Context),
-							Type::getFloatTy(Context),
-							nullptr);
-
-	// TODO: use some method to do this
-	// Add this new idiom function to config.
-	if (getConfig())
-	{
-		retdec_config::Function cf("copysignf");
-		cf.setIsIdiom();
-		cf.returnType.setLlvmIr("float");
-		retdec_config::Object p1("a1", retdec_config::Storage::undefined());
-		p1.type.setLlvmIr("float");
-		retdec_config::Object p2("a2", retdec_config::Storage::undefined());
-		p2.type.setLlvmIr("float");
-		cf.parameters.insert(p1);
-		cf.parameters.insert(p2);
-		getConfig()->getConfig().functions.insert(cf);
-	}
+	auto* fun = llvm::Intrinsic::getDeclaration(
+			M,
+			llvm::Intrinsic::copysign,
+			Type::getFloatTy(Context));
 
 	// Arguments have to be casted to float
 
@@ -621,3 +605,4 @@ Instruction * IdiomsGCC::exchangeCopysign(BasicBlock::iterator iter) const {
 }
 
 } // namespace bin2llvmir
+} // namespace retdec

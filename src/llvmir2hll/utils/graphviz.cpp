@@ -6,27 +6,17 @@
 
 #include <cctype>
 
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/utils/graphviz.h"
-#include "tl-cpputils/conversion.h"
-#include "tl-cpputils/string.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/utils/graphviz.h"
+#include "retdec/utils/conversion.h"
+#include "retdec/utils/string.h"
 
 using namespace std::string_literals;
 
-using tl_cpputils::addSlashes;
-using tl_cpputils::toHex;
+using retdec::utils::addSlashes;
 
+namespace retdec {
 namespace llvmir2hll {
-
-/**
-* @brief Default constructor.
-*/
-UtilsGraphviz::UtilsGraphviz() {}
-
-/**
-* @brief Destructor.
-*/
-UtilsGraphviz::~UtilsGraphviz() {}
 
 /**
 * @brief Creates a label from the given @a str so it can be used in labels in
@@ -57,7 +47,7 @@ std::string UtilsGraphviz::createNodeName(const std::string &str) {
 		// Every other character is converted into its hexadecimal
 		// representation.
 		else {
-			nodeName += toHex(c);
+			nodeName += utils::intToHexString(c);
 		}
 	}
 
@@ -65,3 +55,4 @@ std::string UtilsGraphviz::createNodeName(const std::string &str) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

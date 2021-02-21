@@ -4,16 +4,12 @@
  * @copyright (c) 2017 Avast Software, licensed under the MIT license
  */
 
-#include "bin2llvmir/optimizations/idioms/idioms_analysis.h"
+#include "retdec/bin2llvmir/optimizations/idioms/idioms_analysis.h"
 
 using namespace llvm;
 
+namespace retdec {
 namespace bin2llvmir {
-
-/*
- * Stats of exchanged idioms.
- */
-STATISTIC(NumIdioms, "Number of idioms exchanged in total");
 
 /**
  * Analyse given BasicBlock and use instruction exchanger to transform
@@ -34,12 +30,9 @@ bool IdiomsAnalysis::analyse(llvm::BasicBlock & bb, llvm::Instruction * (IdiomsA
 		Instruction * res = (this->*exchanger)(insn);
 
 		if (res) {
-			++NumIdioms;
-
 			change_made = true;
 
 			(*insn).replaceAllUsesWith(res);
-			print_dbg(fname, *insn);
 
 			// Move the name to the new instruction first.
 			res->takeName(&*insn);
@@ -235,11 +228,6 @@ bool IdiomsAnalysis::doAnalysis(Function & f, Pass * p) {
 
 		// all arch
 		// all compilers
-		change_made |= analyse(bb, &IdiomsCommon::exchangeBitShiftSDiv2,
-									"IdiomsCommon::exchangeBitShiftSDiv2");
-
-		// all arch
-		// all compilers
 		change_made |= analyse(bb, &IdiomsCommon::exchangeBitShiftUDiv,
 									"IdiomsCommon::exchangeBitShiftUDiv");
 
@@ -260,7 +248,7 @@ bool IdiomsAnalysis::doAnalysis(Function & f, Pass * p) {
 										"IdiomsLLVM::exchangeCompareEq");
 
 	#if 0
-			/* We do not recognize this well, see #546 */
+			/* We do not recognize this well */
 			change_made |= analyse(bb, &IdiomsLLVM::exchangeCompareNeq,
 										"IdiomsLLVM::exchangeCompareNeq");
 	#endif
@@ -291,9 +279,8 @@ bool IdiomsAnalysis::analyse(llvm::Function & f, llvm::Pass * p, int (IdiomsAnal
 
 	num_idioms += IdiomsGCC::exchangeCondBitShiftDivMultiBB(f, p);
 
-	NumIdioms += num_idioms;
-
 	return num_idioms == 0;
 }
 
 } // namespace bin2llvmir
+} // namespace retdec

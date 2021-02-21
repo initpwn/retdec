@@ -4,26 +4,27 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/analysis/value_analysis.h"
-#include "llvmir2hll/graphs/cfg/cfg_traversals/optim_func_info_cfg_traversal.h"
-#include "llvmir2hll/graphs/cg/cg.h"
-#include "llvmir2hll/ir/assign_stmt.h"
-#include "llvmir2hll/ir/constant.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/global_var_def.h"
-#include "llvmir2hll/ir/module.h"
-#include "llvmir2hll/ir/return_stmt.h"
-#include "llvmir2hll/ir/statement.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/utils/ir.h"
-#include "tl-cpputils/container.h"
+#include "retdec/llvmir2hll/analysis/value_analysis.h"
+#include "retdec/llvmir2hll/graphs/cfg/cfg_traversals/optim_func_info_cfg_traversal.h"
+#include "retdec/llvmir2hll/graphs/cg/cg.h"
+#include "retdec/llvmir2hll/ir/assign_stmt.h"
+#include "retdec/llvmir2hll/ir/constant.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/global_var_def.h"
+#include "retdec/llvmir2hll/ir/module.h"
+#include "retdec/llvmir2hll/ir/return_stmt.h"
+#include "retdec/llvmir2hll/ir/statement.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/utils/ir.h"
+#include "retdec/utils/container.h"
 
-using tl_cpputils::addToSet;
-using tl_cpputils::hasItem;
-using tl_cpputils::setDifference;
-using tl_cpputils::setIntersection;
+using retdec::utils::addToSet;
+using retdec::utils::hasItem;
+using retdec::utils::setDifference;
+using retdec::utils::setIntersection;
 
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -41,18 +42,12 @@ OptimFuncInfoCFGTraversal::OptimFuncInfoCFGTraversal(ShPtr<Module> module,
 	funcInfo(new OptimFuncInfo(cfg->getCorrespondingFunction())) {}
 
 /**
-* @brief Destructs the traverser.
-*/
-OptimFuncInfoCFGTraversal::~OptimFuncInfoCFGTraversal() {}
-
-/**
 * @brief Computes OptimFuncInfo for the function specified by its CFG.
 *
 * @param[in] module Module which contains the function specified by its CFG.
 * @param[in] cio The used call info obtainer.
 * @param[in] va The used analysis of values.
 * @param[in] cfg CFG that should be traversed.
-* @param[in] va Analysis of values.
 *
 * @par Preconditions
 *  - @a module, @a cio, @a va, and @a cfg are non-null
@@ -400,3 +395,4 @@ bool OptimFuncInfoCFGTraversal::combineRetVals(bool /*origRetVal*/,
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

@@ -4,18 +4,18 @@
  * @copyright (c) 2017 Avast Software, licensed under the MIT license
  */
 
-#include "bin2llvmir/optimizations/idioms/idioms_abstract.h"
+#include "retdec/bin2llvmir/optimizations/idioms/idioms_abstract.h"
 
 using namespace llvm;
 
+namespace retdec {
 namespace bin2llvmir {
 
 IdiomsAbstract::IdiomsAbstract():
 	m_arch(ARCH_ANY), m_compiler(CC_ANY), m_module(nullptr) {}
 
-void IdiomsAbstract::init(llvm::Module * M,  Config* c, CC_compiler cc, CC_arch arch) {
+void IdiomsAbstract::init(llvm::Module * M, CC_compiler cc, CC_arch arch) {
 	m_compiler = cc;
-	m_config = c;
 	m_arch = arch;
 	m_module = M;
 }
@@ -110,3 +110,4 @@ bool IdiomsAbstract::isPowerOfTwoRepresentable(const ConstantInt *cnst) {
 }
 
 } // namespace bin2llvmir
+} // namespace retdec

@@ -8,27 +8,27 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/InstIterator.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Operator.h>
 
-#include "bin2llvmir/analyses/reaching_definitions.h"
-#include "bin2llvmir/optimizations/stack/stack.h"
-#include "bin2llvmir/providers/asm_instruction.h"
-#include "bin2llvmir/utils/ir_modifier.h"
+#include "retdec/bin2llvmir/analyses/reaching_definitions.h"
+#include "retdec/bin2llvmir/optimizations/stack/stack.h"
+#include "retdec/bin2llvmir/providers/asm_instruction.h"
+#include "retdec/bin2llvmir/utils/ir_modifier.h"
 #define debug_enabled false
-#include "llvm-support/utils.h"
-#include "bin2llvmir/utils/type.h"
+#include "retdec/bin2llvmir/utils/llvm.h"
 
-using namespace llvm_support;
 using namespace llvm;
 
+namespace retdec {
 namespace bin2llvmir {
 
 char StackAnalysis::ID = 0;
 
 static RegisterPass<StackAnalysis> X(
-		"stack",
+		"retdec-stack",
 		"Stack optimization",
 		false, // Only looks at CFG
 		false // Analysis Pass
@@ -44,6 +44,7 @@ bool StackAnalysis::runOnModule(llvm::Module& m)
 {
 	_module = &m;
 	_config = ConfigProvider::getConfig(_module);
+	_abi = AbiProvider::getAbi(_module);
 	_dbgf = DebugFormatProvider::getDebugFormat(_module);
 	return run();
 }
@@ -51,10 +52,12 @@ bool StackAnalysis::runOnModule(llvm::Module& m)
 bool StackAnalysis::runOnModuleCustom(
 		llvm::Module& m,
 		Config* c,
+		Abi* abi,
 		DebugFormat* dbgf)
 {
 	_module = &m;
 	_config = c;
+	_abi = abi;
 	_dbgf = dbgf;
 	return run();
 }
@@ -66,277 +69,99 @@ bool StackAnalysis::run()
 		return false;
 	}
 
-	bool changed = false;
-
-//dumpModuleToFile(_module);
-
 	ReachingDefinitionsAnalysis RDA;
-	RDA.runOnModule(*_module, _config);
+	RDA.runOnModule(*_module, _abi);
 
 	for (auto& f : *_module)
 	{
-		changed |= runOnFunction(RDA, &f);
-	}
-
-//dumpModuleToFile(_module);
-
-	return changed;
-}
-
-bool StackAnalysis::runOnFunction(
-		ReachingDefinitionsAnalysis& RDA,
-		llvm::Function* f)
-{
-	bool changed = false;
-
-	LOG << "\tfunction : " << f->getName().str() << std::endl;
-
-	std::map<Value*, Value*> val2val;
-	std::map<std::string, AllocaInst*> n2a;
-	std::list<ReplaceItem> replaceItems;
-
-	for (auto &bb : *f)
-	for (auto &i : bb)
-	{
-		if (StoreInst *store = dyn_cast<StoreInst>(&i))
+		std::map<Value*, Value*> val2val;
+		for (inst_iterator I = inst_begin(f), E = inst_end(f); I != E;)
 		{
-			if (AsmInstruction::isLlvmToAsmInstruction(store))
-			{
-				continue;
-			}
+			Instruction& i = *I;
+			++I;
 
-			handleInstruction(
-					RDA,
-					store,
-					store->getValueOperand(),
-					store->getValueOperand()->getType(),
-					replaceItems,
-					val2val);
-		}
-	}
-
-	for (auto &bb : *f)
-	for (auto &i : bb)
-	{
-		if (LoadInst* load = dyn_cast<LoadInst>(&i))
-		{
-			auto* pt = load->getPointerOperand()->getType()->getPointerElementType();
-			if (pt && pt->isIntegerTy(1))
+			if (StoreInst *store = dyn_cast<StoreInst>(&i))
 			{
-				continue;
-			}
+				if (AsmInstruction::isLlvmToAsmInstruction(store))
+				{
+					continue;
+				}
 
-			if (isa<GlobalVariable>(load->getPointerOperand()))
-			{
-				continue;
-			}
+				handleInstruction(
+						RDA,
+						store,
+						store->getValueOperand(),
+						store->getValueOperand()->getType(),
+						val2val);
 
-			changed |= handleInstruction(
-					RDA,
-					load,
-					load->getPointerOperand(),
-					load->getType(),
-					replaceItems,
-					val2val);
-		}
-		else if (StoreInst *store = dyn_cast<StoreInst>(&i))
-		{
-			if (AsmInstruction::isLlvmToAsmInstruction(store))
-			{
-				continue;
-			}
+				if (isa<GlobalVariable>(store->getPointerOperand()))
+				{
+					continue;
+				}
 
-			auto* pt = store->getPointerOperand()->getType()->getPointerElementType();
-			if (pt && pt->isIntegerTy(1))
-			{
-				continue;
-			}
-
-			if (!isa<GlobalVariable>(store->getPointerOperand()))
-			{
-				changed |= handleInstruction(
+				handleInstruction(
 						RDA,
 						store,
 						store->getPointerOperand(),
 						store->getValueOperand()->getType(),
-						replaceItems,
+						val2val);
+			}
+			else if (LoadInst* load = dyn_cast<LoadInst>(&i))
+			{
+				if (isa<GlobalVariable>(load->getPointerOperand()))
+				{
+					continue;
+				}
+
+				handleInstruction(
+						RDA,
+						load,
+						load->getPointerOperand(),
+						load->getType(),
 						val2val);
 			}
 		}
 	}
 
-	std::set<Instruction*> toErase;
-	for (auto& ri : replaceItems)
-	{
-		auto* s = dyn_cast<StoreInst>(ri.inst);
-		auto* l = dyn_cast<LoadInst>(ri.inst);
-		if (s && s->getPointerOperand() == ri.from)
-		{
-			// TODO: if would be better, it else branch here was not needed.
-			// We would only replace load/store pointer operand and the type
-			// propagation would be handled later by som other related analysis.
-			//
-			if (ri.to->getAllocatedType()->isAggregateType())
-			{
-				auto* conv = convertValueToType(
-						ri.to,
-						s->getPointerOperand()->getType(),
-						ri.inst);
-				s->setOperand(s->getPointerOperandIndex(), conv);
-			}
-			else
-			{
-				auto* conv = convertValueToType(
-						s->getValueOperand(),
-						ri.to->getType()->getElementType(),
-						ri.inst);
-				new StoreInst(conv, ri.to, ri.inst);
-				toErase.insert(s);
-				new StoreInst(conv, ri.to, ri.inst);
-				toErase.insert(s);
-			}
-		}
-		else if (l && l->getPointerOperand() == ri.from)
-		{
-			if (ri.to->getAllocatedType()->isAggregateType())
-			{
-				auto* conv = convertValueToType(
-						ri.to,
-						l->getPointerOperand()->getType(),
-						ri.inst);
-				l->setOperand(l->getPointerOperandIndex(), conv);
-			}
-			else
-			{
-				auto* nl = new LoadInst(ri.to, "", l);
-				auto* conv = convertValueToType(nl, l->getType(), l);
-				l->replaceAllUsesWith(conv);
-				toErase.insert(l);
-			}
-		}
-		else
-		{
-			auto* conv = convertValueToType(ri.to, ri.from->getType(), ri.inst);
-			ri.inst->replaceUsesOfWith(ri.from, conv);
-		}
-	}
-	for (auto* e : toErase)
-	{
-		e->eraseFromParent();
-	}
+	IrModifier::eraseUnusedInstructionsRecursive(_toRemove);
 
-	return changed;
+	return false;
 }
 
-bool StackAnalysis::handleInstruction(
+void StackAnalysis::handleInstruction(
 		ReachingDefinitionsAnalysis& RDA,
 		llvm::Instruction* inst,
 		llvm::Value* val,
 		llvm::Type* type,
-		std::list<ReplaceItem>& replaceItems,
 		std::map<llvm::Value*, llvm::Value*>& val2val)
 {
-	LOG << "@ " << AsmInstruction::getInstructionAddress(inst) << std::endl;
-
-	SymbolicTree root(RDA, val, &val2val, 100);
-
-	if (!root.isConstructedSuccessfully())
-	{
-		LOG << "!isConstructedSuccessfully()" << std::endl;
-		return false;
-	}
-
 	LOG << llvmObjToString(inst) << std::endl;
+
+	auto root = SymbolicTree::PrecomputedRdaWithValueMap(RDA, val, &val2val);
 	LOG << root << std::endl;
 
-	bool stackPtr = false;
-	auto post = root.getPostOrder();
 	if (!root.isVal2ValMapUsed())
 	{
-		for (SymbolicTree* n : post)
+		bool stackPtr = false;
+		for (SymbolicTree* n : root.getPostOrder())
 		{
-			if (_config->isStackPointerRegister(n->value))
+			if (_abi->isStackPointerRegister(n->value))
 			{
 				stackPtr = true;
 				break;
-			}
-			else if (auto* l = dyn_cast<LoadInst>(n->value))
-			{
-				if (_config->isStackPointerRegister(l->getPointerOperand()))
-				{
-					stackPtr = true;
-					break;
-				}
 			}
 		}
 		if (!stackPtr)
 		{
 			LOG << "===> no SP" << std::endl;
-			return false;
+			return;
 		}
 	}
 
 	auto* debugSv = getDebugStackVariable(inst->getFunction(), root);
+	auto* configSv = getConfigStackVariable(inst->getFunction(), root);
 
-	auto& arch = _config->getConfig().architecture;
-
-	for (SymbolicTree* n : root.getPostOrder())
-	{
-		auto* l = dyn_cast<LoadInst>(n->value);
-		if (l == nullptr || !_config->isRegister(l->getPointerOperand()) ||
-				(l->getPointerOperand()->getName() != "esp"
-						&& l->getPointerOperand()->getName() != "rsp"
-						&& (!(l->getPointerOperand()->getName() == "r1" && arch.isPpc()))
-						&& l->getPointerOperand()->getName() != "sp"))
-		{
-			continue;
-		}
-
-		// TODO: who if there are more constants? e.g. 0 and -56.
-		// tight now, first pass takes only non-zeros, second takes also zeros.
-		//
-		for (SymbolicTree& op : n->ops)
-		{
-			if (isa<ConstantInt>(op.value)
-					&& !cast<ConstantInt>(op.value)->isZero())
-			{
-				n->value = op.value;
-				n->ops.clear();
-				break;
-			}
-		}
-		for (SymbolicTree& op : n->ops)
-		{
-			if (isa<ConstantInt>(op.value))
-			{
-				n->value = op.value;
-				n->ops.clear();
-				break;
-			}
-		}
-	}
-
-	for (SymbolicTree* n : root.getPreOrder())
-	{
-		auto* l = dyn_cast<LoadInst>(n->value);
-		if (l == nullptr || n->ops.size() != 2)
-		{
-			continue;
-		}
-
-		SymbolicTree root0(RDA, n->ops[0].value, &val2val);
-		root0.simplifyNode(_config);
-		SymbolicTree root1(RDA, n->ops[1].value, &val2val);
-		root1.simplifyNode(_config);
-
-		if (isa<ConstantInt>(root0.value) && root0.value == root1.value)
-		{
-			n->ops.pop_back();
-			break;
-		}
-	}
-
-	root.simplifyNode(_config);
+	root.simplifyNode();
 	LOG << root << std::endl;
 
 	if (debugSv == nullptr)
@@ -344,10 +169,15 @@ bool StackAnalysis::handleInstruction(
 		debugSv = getDebugStackVariable(inst->getFunction(), root);
 	}
 
+	if (configSv == nullptr)
+	{
+		configSv = getConfigStackVariable(inst->getFunction(), root);
+	}
+
 	auto* ci = dyn_cast_or_null<ConstantInt>(root.value);
 	if (ci == nullptr)
 	{
-		return false;
+		return;
 	}
 
 	if (auto* s = dyn_cast<StoreInst>(inst))
@@ -361,60 +191,81 @@ bool StackAnalysis::handleInstruction(
 	LOG << "===> " << llvmObjToString(ci) << std::endl;
 	LOG << "===> " << ci->getSExtValue() << std::endl;
 
-	std::string name = debugSv ? debugSv->getName() : "";
-	Type* t = debugSv ?
-			stringToLlvmTypeDefault(_module, debugSv->type.getLlvmIr()) :
-			type;
+	std::string name = "";
+	Type* t = type;
+
+	if (debugSv)
+	{
+		name = debugSv->getName();
+		t = llvm_utils::stringToLlvmTypeDefault(_module, debugSv->type.getLlvmIr());
+	}
+	else if (configSv)
+	{
+		name = configSv->getName();
+		t = llvm_utils::stringToLlvmTypeDefault(_module, configSv->type.getLlvmIr());
+	}
+
+	std::string realName;
+	if (debugSv)
+	{
+		realName = debugSv->getName();
+	}
+	else if (configSv)
+	{
+		realName = configSv->getName();
+	}
 
 	IrModifier irModif(_module, _config);
 	auto p = irModif.getStackVariable(
 			inst->getFunction(),
 			ci->getSExtValue(),
 			t,
-			name);
+			name,
+			realName,
+			debugSv || configSv);
 
 	AllocaInst* a = p.first;
-	auto* ca = p.second;
-
-	if (debugSv)
-	{
-		ca->setIsFromDebug(true);
-		ca->setRealName(debugSv->getName());
-	}
-
-	replaceItems.push_back(ReplaceItem{inst, val, a});
 
 	LOG << "===> " << llvmObjToString(a) << std::endl;
 	LOG << "===> " << llvmObjToString(inst) << std::endl;
 	LOG << std::endl;
 
-	return true;
+	auto* s = dyn_cast<StoreInst>(inst);
+	auto* l = dyn_cast<LoadInst>(inst);
+	if (s && s->getPointerOperand() == val)
+	{
+		auto* conv = IrModifier::convertValueToType(
+				s->getValueOperand(),
+				a->getType()->getElementType(),
+				inst);
+		new StoreInst(conv, a, inst);
+		_toRemove.insert(s);
+	}
+	else if (l && l->getPointerOperand() == val)
+	{
+		auto* nl = new LoadInst(a, "", l);
+		auto* conv = IrModifier::convertValueToType(nl, l->getType(), l);
+		l->replaceAllUsesWith(conv);
+		_toRemove.insert(l);
+	}
+	else
+	{
+		auto* conv = IrModifier::convertValueToType(a, val->getType(), inst);
+		_toRemove.insert(val);
+		inst->replaceUsesOfWith(val, conv);
+	}
 }
 
-retdec_config::Object* StackAnalysis::getDebugStackVariable(
-		llvm::Function* fnc,
-		SymbolicTree& root)
+std::optional<int> StackAnalysis::getBaseOffset(SymbolicTree& root)
 {
-	if (_dbgf == nullptr)
-	{
-		return nullptr;
-	}
-	auto addr = _config->getFunctionAddress(fnc);
-	auto* debugFnc = _dbgf->getFunction(addr);
-	if (debugFnc == nullptr)
-	{
-		return nullptr;
-	}
-
-	tl_cpputils::Maybe<int> baseOffset;
+	std::optional<int> baseOffset;
 	if (auto* ci = dyn_cast_or_null<ConstantInt>(root.value))
 	{
 		baseOffset = ci->getSExtValue();
 	}
 	else
 	{
-		auto pre = root.getPreOrder();
-		for (SymbolicTree* n : pre)
+		for (SymbolicTree* n : root.getLevelOrder())
 		{
 			if (isa<AddOperator>(n->value)
 					&& n->ops.size() == 2
@@ -423,7 +274,7 @@ retdec_config::Object* StackAnalysis::getDebugStackVariable(
 			{
 				auto* l = cast<LoadInst>(n->ops[0].value);
 				auto* ci = cast<ConstantInt>(n->ops[1].value);
-				if (_config->isRegister(l->getPointerOperand()))
+				if (_abi->isRegister(l->getPointerOperand()))
 				{
 					baseOffset = ci->getSExtValue();
 				}
@@ -432,19 +283,40 @@ retdec_config::Object* StackAnalysis::getDebugStackVariable(
 		}
 	}
 
-	if (baseOffset.isUndefined())
+	return baseOffset;
+}
+
+/**
+ * Find a value that is being added to the stack pointer register in \p root.
+ * Find a debug variable with offset equal to this value.
+ */
+const retdec::common::Object* StackAnalysis::getDebugStackVariable(
+		llvm::Function* fnc,
+		SymbolicTree& root)
+{
+	auto baseOffset = getBaseOffset(root);
+	if (!baseOffset.has_value())
 	{
 		return nullptr;
 	}
 
-	for (auto& p : debugFnc->locals)
+	if (_dbgf == nullptr)
 	{
-		auto& var = p.second;
+		return nullptr;
+	}
+
+	auto* debugFnc = _dbgf->getFunction(_config->getFunctionAddress(fnc));
+	if (debugFnc == nullptr)
+	{
+		return nullptr;
+	}
+
+	for (auto& var : debugFnc->locals)
+	{
 		if (!var.getStorage().isStack())
 		{
 			continue;
 		}
-
 		if (var.getStorage().getStackOffset() == baseOffset)
 		{
 			return &var;
@@ -454,4 +326,30 @@ retdec_config::Object* StackAnalysis::getDebugStackVariable(
 	return nullptr;
 }
 
+const retdec::common::Object* StackAnalysis::getConfigStackVariable(
+		llvm::Function* fnc,
+		SymbolicTree& root)
+{
+	auto baseOffset = getBaseOffset(root);
+	if (!baseOffset.has_value())
+	{
+		return nullptr;
+	}
+
+	auto cfn = _config->getConfigFunction(fnc);
+	if (cfn && _config->getLlvmStackVariable(fnc, baseOffset.value()) == nullptr)
+	{
+		for (auto& var: cfn->locals)
+		{
+			if (var.getStorage().getStackOffset() == baseOffset)
+			{
+				return &var;
+			}
+		}
+	}
+
+	return nullptr;
+}
+
 } // namespace bin2llvmir
+} // namespace retdec

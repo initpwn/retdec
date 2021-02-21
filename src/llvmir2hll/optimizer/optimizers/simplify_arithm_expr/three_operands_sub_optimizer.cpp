@@ -4,26 +4,29 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/evaluator/arithm_expr_evaluator.h"
-#include "llvmir2hll/ir/add_op_expr.h"
-#include "llvmir2hll/ir/bit_xor_op_expr.h"
-#include "llvmir2hll/ir/const_float.h"
-#include "llvmir2hll/ir/const_int.h"
-#include "llvmir2hll/ir/eq_op_expr.h"
-#include "llvmir2hll/ir/expression.h"
-#include "llvmir2hll/ir/gt_eq_op_expr.h"
-#include "llvmir2hll/ir/gt_op_expr.h"
-#include "llvmir2hll/ir/lt_eq_op_expr.h"
-#include "llvmir2hll/ir/lt_op_expr.h"
-#include "llvmir2hll/ir/neg_op_expr.h"
-#include "llvmir2hll/ir/neq_op_expr.h"
-#include "llvmir2hll/ir/not_op_expr.h"
-#include "llvmir2hll/ir/or_op_expr.h"
-#include "llvmir2hll/ir/sub_op_expr.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/optimizer/optimizers/simplify_arithm_expr/three_operands_sub_optimizer.h"
-#include "llvmir2hll/support/debug.h"
+#include <optional>
 
+#include "retdec/llvmir2hll/evaluator/arithm_expr_evaluator.h"
+#include "retdec/llvmir2hll/ir/add_op_expr.h"
+#include "retdec/llvmir2hll/ir/bit_xor_op_expr.h"
+#include "retdec/llvmir2hll/ir/const_float.h"
+#include "retdec/llvmir2hll/ir/const_int.h"
+#include "retdec/llvmir2hll/ir/eq_op_expr.h"
+#include "retdec/llvmir2hll/ir/expression.h"
+#include "retdec/llvmir2hll/ir/gt_eq_op_expr.h"
+#include "retdec/llvmir2hll/ir/gt_op_expr.h"
+#include "retdec/llvmir2hll/ir/lt_eq_op_expr.h"
+#include "retdec/llvmir2hll/ir/lt_op_expr.h"
+#include "retdec/llvmir2hll/ir/neg_op_expr.h"
+#include "retdec/llvmir2hll/ir/neq_op_expr.h"
+#include "retdec/llvmir2hll/ir/not_op_expr.h"
+#include "retdec/llvmir2hll/ir/or_op_expr.h"
+#include "retdec/llvmir2hll/ir/sub_op_expr.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/optimizer/optimizers/simplify_arithm_expr/three_operands_sub_optimizer.h"
+#include "retdec/llvmir2hll/support/debug.h"
+
+namespace retdec {
 namespace llvmir2hll {
 
 namespace {
@@ -52,11 +55,6 @@ REGISTER_AT_FACTORY("ThreeOperands", OP_OPER_OP_OPER_OP_SUB_OPTIMIZER_ID,
 */
 ThreeOperandsSubOptimizer::ThreeOperandsSubOptimizer(ShPtr<ArithmExprEvaluator>
 		arithmExprEvaluator): SubOptimizer(arithmExprEvaluator) {}
-
-/**
-* @brief Destructor.
-*/
-ThreeOperandsSubOptimizer::~ThreeOperandsSubOptimizer() {}
 
 /**
 * @brief Creates a new ThreeOperandsSubOptimizer.
@@ -381,7 +379,7 @@ bool ThreeOperandsSubOptimizer::analyzeOpOperOp(ShPtr<Expression> &constant,
 void ThreeOperandsSubOptimizer::visit(ShPtr<LtOpExpr> expr) {
 	OrderedAllVisitor::visit(expr);
 
-	Maybe<ExprPair> exprPair(tryOptimizeExpressionWithRelationalOperator(expr));
+	std::optional<ExprPair> exprPair(tryOptimizeExpressionWithRelationalOperator(expr));
 	if (exprPair) {
 		optimizeExpr(expr, LtOpExpr::create(exprPair->first, exprPair->second));
 	}
@@ -390,7 +388,7 @@ void ThreeOperandsSubOptimizer::visit(ShPtr<LtOpExpr> expr) {
 void ThreeOperandsSubOptimizer::visit(ShPtr<LtEqOpExpr> expr) {
 	OrderedAllVisitor::visit(expr);
 
-	Maybe<ExprPair> exprPair(tryOptimizeExpressionWithRelationalOperator(expr));
+	std::optional<ExprPair> exprPair(tryOptimizeExpressionWithRelationalOperator(expr));
 	if (exprPair) {
 		optimizeExpr(expr, LtEqOpExpr::create(exprPair->first, exprPair->second));
 	}
@@ -399,7 +397,7 @@ void ThreeOperandsSubOptimizer::visit(ShPtr<LtEqOpExpr> expr) {
 void ThreeOperandsSubOptimizer::visit(ShPtr<GtOpExpr> expr) {
 	OrderedAllVisitor::visit(expr);
 
-	Maybe<ExprPair> exprPair(tryOptimizeExpressionWithRelationalOperator(expr));
+	std::optional<ExprPair> exprPair(tryOptimizeExpressionWithRelationalOperator(expr));
 	if (exprPair) {
 		optimizeExpr(expr, GtOpExpr::create(exprPair->first, exprPair->second));
 	}
@@ -408,7 +406,7 @@ void ThreeOperandsSubOptimizer::visit(ShPtr<GtOpExpr> expr) {
 void ThreeOperandsSubOptimizer::visit(ShPtr<GtEqOpExpr> expr) {
 	OrderedAllVisitor::visit(expr);
 
-	Maybe<ExprPair> exprPair(tryOptimizeExpressionWithRelationalOperator(expr));
+	std::optional<ExprPair> exprPair(tryOptimizeExpressionWithRelationalOperator(expr));
 	if (exprPair) {
 		optimizeExpr(expr, GtEqOpExpr::create(exprPair->first, exprPair->second));
 	}
@@ -417,7 +415,7 @@ void ThreeOperandsSubOptimizer::visit(ShPtr<GtEqOpExpr> expr) {
 void ThreeOperandsSubOptimizer::visit(ShPtr<EqOpExpr> expr) {
 	OrderedAllVisitor::visit(expr);
 
-	Maybe<ExprPair> exprPair(tryOptimizeExpressionWithRelationalOperator(expr));
+	std::optional<ExprPair> exprPair(tryOptimizeExpressionWithRelationalOperator(expr));
 	if (exprPair) {
 		optimizeExpr(expr, EqOpExpr::create(exprPair->first, exprPair->second));
 	}
@@ -426,7 +424,7 @@ void ThreeOperandsSubOptimizer::visit(ShPtr<EqOpExpr> expr) {
 void ThreeOperandsSubOptimizer::visit(ShPtr<NeqOpExpr> expr) {
 	OrderedAllVisitor::visit(expr);
 
-	Maybe<ExprPair> exprPair(tryOptimizeExpressionWithRelationalOperator(expr));
+	std::optional<ExprPair> exprPair(tryOptimizeExpressionWithRelationalOperator(expr));
 	if (exprPair) {
 		optimizeExpr(expr, NeqOpExpr::create(exprPair->first, exprPair->second));
 	}
@@ -534,7 +532,7 @@ void ThreeOperandsSubOptimizer::tryOptimizeBitXorOpWithRelationalOperator(ShPtr<
 * @par Preconditions
 *  - @a expr is BinaryOpExpr with relational operator.
 */
-Maybe<ThreeOperandsSubOptimizer::ExprPair> ThreeOperandsSubOptimizer::
+std::optional<ThreeOperandsSubOptimizer::ExprPair> ThreeOperandsSubOptimizer::
 		tryOptimizeExpressionWithRelationalOperator(ShPtr<BinaryOpExpr> expr) {
 	if (isConstFloatOrConstInt(expr->getSecondOperand())) {
 		// Optimization like
@@ -551,7 +549,7 @@ Maybe<ThreeOperandsSubOptimizer::ExprPair> ThreeOperandsSubOptimizer::
 			if (!analyzeOpOperOp(constSecOp, exprSecOp, binOpExpr)) {
 				// Something like (anything + - anything) < ConstInt/ConstFloat.
 				// "anything" in both operands are not ConstInt/ConstFloat.
-				return Nothing<ExprPair>();
+				return std::nullopt;
 			};
 		}
 		if (addOpExpr) {
@@ -562,7 +560,7 @@ Maybe<ThreeOperandsSubOptimizer::ExprPair> ThreeOperandsSubOptimizer::
 				expr->getSecondOperand(), constSecOp)));
 			if (result) {
 				// Result is anything relational operator Constant.
-				return Just(ExprPair(exprSecOp, result));
+				return ExprPair(exprSecOp, result);
 			}
 		} else if (subOpExpr) {
 			// Optimization like
@@ -580,7 +578,7 @@ Maybe<ThreeOperandsSubOptimizer::ExprPair> ThreeOperandsSubOptimizer::
 					expr->getSecondOperand(), constSecOp)));
 				if (result) {
 					// Result is anything relational operator Constant.
-					return Just(ExprPair(exprSecOp, result));
+					return ExprPair(exprSecOp, result);
 				}
 			} else if (constSecOp->isEqualTo(subOpExpr->getFirstOperand())) {
 				// Optimization like
@@ -591,12 +589,12 @@ Maybe<ThreeOperandsSubOptimizer::ExprPair> ThreeOperandsSubOptimizer::
 				ShPtr<NegOpExpr> negOpExpr(NegOpExpr::create(exprSecOp));
 				if (result) {
 					// Result is anything(negOpExpr) relational operator Constant.
-					return Just(ExprPair(negOpExpr, result));
+					return ExprPair(negOpExpr, result);
 				}
 			}
 		}
 	}
-	return Nothing<ExprPair>();
+	return std::nullopt;
 }
 
 /**
@@ -611,3 +609,4 @@ ShPtr<Expression> ThreeOperandsSubOptimizer::getResult(ShPtr<Expression> expr) c
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

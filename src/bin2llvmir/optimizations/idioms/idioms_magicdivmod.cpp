@@ -4,15 +4,14 @@
  * @copyright (c) 2017 Avast Software, licensed under the MIT license
  */
 
-#include <iostream>
-
 #include <llvm/IR/PatternMatch.h>
 
-#include "bin2llvmir/optimizations/idioms/idioms_magicdivmod.h"
+#include "retdec/bin2llvmir/optimizations/idioms/idioms_magicdivmod.h"
 
 using namespace llvm;
 using namespace PatternMatch;
 
+namespace retdec {
 namespace bin2llvmir {
 
 /**
@@ -1432,7 +1431,6 @@ Instruction * IdiomsMagicDivMod::magicSignedDiv8(BasicBlock::iterator iter, bool
 		return div;
 }
 
-
 /**
  * Wrapper of magicSignedDiv8 for positive values.
  *
@@ -1475,7 +1473,7 @@ Instruction * IdiomsMagicDivMod::magicSignedDiv8neg(BasicBlock::iterator iter) c
  */
 Instruction * IdiomsMagicDivMod::signedMod1(BasicBlock::iterator iter) const {
 	/*
-	 * Derivation tree (ARM/ELF, idiom based on #943):
+	 * Derivation tree (ARM/ELF):
 	 *
 	 *                                       add
 	 *                                        /\
@@ -1735,3 +1733,4 @@ Instruction * IdiomsMagicDivMod::unsignedMod(BasicBlock::iterator iter) const {
 }
 
 } // namespace bin2llvmir
+} // namespace retdec

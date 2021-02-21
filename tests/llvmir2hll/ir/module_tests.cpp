@@ -11,18 +11,19 @@
 #include <llvm/IR/Module.h>
 
 #include "llvmir2hll/config/config_mock.h"
-#include "llvmir2hll/ir/const_int.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/function_builder.h"
-#include "llvmir2hll/ir/int_type.h"
-#include "llvmir2hll/ir/module.h"
-#include "llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/ir/const_int.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/function_builder.h"
+#include "retdec/llvmir2hll/ir/int_type.h"
+#include "retdec/llvmir2hll/ir/module.h"
+#include "retdec/llvmir2hll/ir/variable.h"
 #include "llvmir2hll/semantics/semantics_mock.h"
-#include "llvmir2hll/support/types.h"
+#include "retdec/llvmir2hll/support/types.h"
 
 using namespace ::testing;
 using namespace std::string_literals;
 
+namespace retdec {
 namespace llvmir2hll {
 namespace tests {
 
@@ -284,6 +285,55 @@ HasUserDefinedFuncsReturnsTrueWhenThereIsDefinitionOfUserDefinedFunc) {
 }
 
 //
+// getDecompilerDefinedFuncs()
+//
+
+TEST_F(ModuleTests,
+GetDecompilerDefinedFuncsReturnsEmptySetWhenThereAreNoFuncs) {
+	ASSERT_EQ(FuncSet(), module->getDecompilerDefinedFuncs());
+}
+
+TEST_F(ModuleTests,
+GetDecompilerDefinedFuncsReturnsCorrectValueWhenThereAreDecompilerDefinedFunc) {
+	// Check that both declarations and definitions are checked.
+	auto myFunc1 = addFuncDecl("my_func1");
+	EXPECT_CALL(*configMock, isDecompilerDefinedFunc(myFunc1->getName()))
+		.WillOnce(Return(true));
+	auto myFunc2 = addFuncDef("my_func2");
+	EXPECT_CALL(*configMock, isDecompilerDefinedFunc(myFunc2->getName()))
+		.WillOnce(Return(true));
+
+	ASSERT_EQ(FuncSet({myFunc1, myFunc2}), module->getDecompilerDefinedFuncs());
+}
+
+//
+// hasDecompilerDefinedFuncs()
+//
+
+TEST_F(ModuleTests,
+HasDecompilerDefinedFuncsReturnsFalseWhenThereAreNoFuncs) {
+	ASSERT_FALSE(module->hasDecompilerDefinedFuncs());
+}
+
+TEST_F(ModuleTests,
+HasDecompilerDefinedFuncsReturnsTrueWhenThereIsDeclarationOfDecompilerDefinedFunc) {
+	auto myFunc = addFuncDecl("my_func");
+	EXPECT_CALL(*configMock, isDecompilerDefinedFunc(myFunc->getName()))
+		.WillOnce(Return(true));
+
+	ASSERT_TRUE(module->hasDecompilerDefinedFuncs());
+}
+
+TEST_F(ModuleTests,
+HasDecompilerDefinedFuncsReturnsTrueWhenThereIsDefinitionOfDecompilerDefinedFunc) {
+	auto myFunc = addFuncDef("my_func");
+	EXPECT_CALL(*configMock, isDecompilerDefinedFunc(myFunc->getName()))
+		.WillOnce(Return(true));
+
+	ASSERT_TRUE(module->hasDecompilerDefinedFuncs());
+}
+
+//
 // getUserDefinedFuncs()
 //
 
@@ -523,19 +573,6 @@ GetDemangledNameOfFuncReturnsCorrectValue) {
 		.WillOnce(Return(DEMANGLED_NAME));
 
 	ASSERT_EQ(DEMANGLED_NAME, module->getDemangledNameOfFunc(myFunc));
-}
-
-//
-// getNamesOfFuncsFixedWithLLVMIRFixer()
-//
-
-TEST_F(ModuleTests,
-GetNamesOfFuncsFixedWithLLVMIRFixerReturnsCorrectValue) {
-	auto FIXED_FUNCS = StringSet({"func1", "func2"});
-	EXPECT_CALL(*configMock, getFuncsFixedWithLLVMIRFixer())
-		.WillOnce(Return(FIXED_FUNCS));
-
-	ASSERT_EQ(FIXED_FUNCS, module->getNamesOfFuncsFixedWithLLVMIRFixer());
 }
 
 //
@@ -828,19 +865,6 @@ GetDebugNameForLocalVarReturnsCorrectValue) {
 }
 
 //
-// getFrontendRelease()
-//
-
-TEST_F(ModuleTests,
-GetFrontendReleaseReturnsCorrectValue) {
-	auto FRONTEND_RELEASE = "v1.0"s;
-	EXPECT_CALL(*configMock, getFrontendRelease())
-		.WillOnce(Return(FRONTEND_RELEASE));
-
-	ASSERT_EQ(FRONTEND_RELEASE, module->getFrontendRelease());
-}
-
-//
 // getNumberOfFuncsDetectedInFrontend()
 //
 
@@ -892,18 +916,6 @@ GetSelectedButNotFoundFuncsReturnsCorrectValue) {
 	ASSERT_EQ(SELECTED_BUT_NOT_FOUND_FUNCS, module->getSelectedButNotFoundFuncs());
 }
 
-//
-// getOptsRunInFrontend()
-//
-
-TEST_F(ModuleTests,
-GetOptsRunInFrontendReturnsCorrectValue) {
-	auto OPTS_RUN_IN_FRONTEND = StringSet({"opt1", "opt2"});
-	EXPECT_CALL(*configMock, getOptsRunInFrontend())
-		.WillOnce(Return(OPTS_RUN_IN_FRONTEND));
-
-	ASSERT_EQ(OPTS_RUN_IN_FRONTEND, module->getOptsRunInFrontend());
-}
-
 } // namespace tests
 } // namespace llvmir2hll
+} // namespace retdec

@@ -6,23 +6,23 @@
 
 #include <cstddef>
 
-#include "llvmir2hll/analysis/value_analysis.h"
-#include "llvmir2hll/graphs/cfg/cfg_builders/non_recursive_cfg_builder.h"
-#include "llvmir2hll/ir/call_expr.h"
-#include "llvmir2hll/ir/function.h"
-#include "llvmir2hll/ir/module.h"
-#include "llvmir2hll/ir/variable.h"
-#include "llvmir2hll/obtainer/call_info_obtainer.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvm-support/diagnostics.h"
-#include "tl-cpputils/container.h"
+#include "retdec/llvmir2hll/analysis/value_analysis.h"
+#include "retdec/llvmir2hll/graphs/cfg/cfg_builders/non_recursive_cfg_builder.h"
+#include "retdec/llvmir2hll/ir/call_expr.h"
+#include "retdec/llvmir2hll/ir/function.h"
+#include "retdec/llvmir2hll/ir/module.h"
+#include "retdec/llvmir2hll/ir/variable.h"
+#include "retdec/llvmir2hll/obtainer/call_info_obtainer.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/utils/container.h"
+#include "retdec/utils/io/log.h"
 
-using namespace llvm_support;
+using namespace retdec::utils::io;
+using retdec::utils::hasItem;
+using retdec::utils::setDifference;
+using retdec::utils::setUnion;
 
-using tl_cpputils::hasItem;
-using tl_cpputils::setDifference;
-using tl_cpputils::setUnion;
-
+namespace retdec {
 namespace llvmir2hll {
 
 /**
@@ -30,13 +30,6 @@ namespace llvmir2hll {
 */
 CallInfo::CallInfo(ShPtr<CallExpr> call):
 	call(call) {}
-
-/**
-* @brief Destructs the piece of information.
-*
-* A default implementation is provided.
-*/
-CallInfo::~CallInfo() {}
 
 /**
 * @brief Returns the function call for which the piece of information has been
@@ -53,13 +46,6 @@ FuncInfo::FuncInfo(ShPtr<Function> func):
 	func(func) {}
 
 /**
-* @brief Destructs the piece of information.
-*
-* A default implementation is provided.
-*/
-FuncInfo::~FuncInfo() {}
-
-/**
 * @brief Returns the function for which the piece of information has been
 *        computed.
 */
@@ -73,11 +59,6 @@ ShPtr<Function> FuncInfo::getFunc() const {
 CallInfoObtainer::CallInfoObtainer():
 	module(), cg(), va(), funcCFGMap(),
 	cfgBuilder(NonRecursiveCFGBuilder::create()) {}
-
-/**
-* @brief Destructs the obtainer.
-*/
-CallInfoObtainer::~CallInfoObtainer() {}
 
 /**
 * @brief Returns the call graph with which the obtainer has been initialized.
@@ -239,8 +220,9 @@ bool CallInfoObtainer::callsJustComputedFuncs(ShPtr<Function> func,
 *  - @a remainingFuncs doesn't contain a function which calls just functions
 *    from @a computedFuncs.
 */
-CallInfoObtainer::SCCWithRepresent CallInfoObtainer::findNextSCC(const FuncSetSet &sccs,
-		const FuncSet &computedFuncs, const FuncSet &remainingFuncs) const {
+CallInfoObtainer::SCCWithRepresent CallInfoObtainer::findNextSCC(
+		const FuncVectorSet &sccs, const FuncSet &computedFuncs,
+		const FuncSet &remainingFuncs) const {
 	PRECONDITION(!remainingFuncs.empty(), "it should not be empty");
 
 	//
@@ -273,7 +255,7 @@ CallInfoObtainer::SCCWithRepresent CallInfoObtainer::findNextSCC(const FuncSetSe
 	}
 
 	// TODO Can this happen?
-	printWarningMessage("[SCCComputer] No viable SCC has been found.");
+	Log::error() << Log::Warning << "[SCCComputer] No viable SCC has been found." << std::endl;
 	FuncSet scc;
 	ShPtr<Function> func(*(remainingFuncs.begin()));
 	scc.insert(func);
@@ -286,7 +268,7 @@ CallInfoObtainer::SCCWithRepresent CallInfoObtainer::findNextSCC(const FuncSetSe
 * A single function is not considered to be an SCC unless it contains a call to
 * itself (see the description of FuncInfoCompOrder).
 */
-CallInfoObtainer::FuncSetSet CallInfoObtainer::computeSCCs() {
+CallInfoObtainer::FuncVectorSet CallInfoObtainer::computeSCCs() {
 	return SCCComputer::computeSCCs(cg);
 }
 
@@ -333,11 +315,6 @@ CallInfoObtainer::SCCComputer::SCCComputer(ShPtr<CG> cg): cg(cg), index(0) {
 }
 
 /**
-* @brief Destructs the computer.
-*/
-CallInfoObtainer::SCCComputer::~SCCComputer() {}
-
-/**
 * @brief Computes and returns all strongly connected components (SCCs) in the
 *        given call graph.
 *
@@ -347,7 +324,7 @@ CallInfoObtainer::SCCComputer::~SCCComputer() {}
 * A single function is not considered to be an SCC unless it contains a call to
 * itself (see the description of FuncInfoCompOrder).
 */
-CallInfoObtainer::FuncSetSet CallInfoObtainer::SCCComputer::computeSCCs(
+CallInfoObtainer::FuncVectorSet CallInfoObtainer::SCCComputer::computeSCCs(
 		ShPtr<CG> cg) {
 	PRECONDITION_NON_NULL(cg);
 
@@ -362,7 +339,7 @@ CallInfoObtainer::FuncSetSet CallInfoObtainer::SCCComputer::computeSCCs(
 * A single function is not considered to be an SCC unless it contains a call to
 * itself (see the description of FuncInfoCompOrder).
 */
-CallInfoObtainer::FuncSetSet CallInfoObtainer::SCCComputer::findSCCs() {
+CallInfoObtainer::FuncVectorSet CallInfoObtainer::SCCComputer::findSCCs() {
 	// The following code corresponds to the code from
 	// http://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
 
@@ -435,9 +412,13 @@ void CallInfoObtainer::SCCComputer::visit(ShPtr<CG::CalledFuncs> calledFunc,
 		// function, do this only if it calls itself (see the description of
 		// computeSCCs()).
 		if (scc.size() != 1 || hasItem(calledFunc->callees, calledFunc->caller)) {
-			sccs.insert(scc);
+			// Tarjan only tries to create each SCC once, so it is
+			// safe to use push_back here - it will never add
+			// duplicates.
+			sccs.push_back(scc);
 		}
 	}
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

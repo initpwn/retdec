@@ -4,26 +4,17 @@
 * @copyright (c) 2017 Avast Software, licensed under the MIT license
 */
 
-#include "llvmir2hll/ir/empty_stmt.h"
-#include "llvmir2hll/support/debug.h"
-#include "llvmir2hll/support/visitor.h"
+#include "retdec/llvmir2hll/ir/empty_stmt.h"
+#include "retdec/llvmir2hll/support/debug.h"
+#include "retdec/llvmir2hll/support/visitor.h"
 
+namespace retdec {
 namespace llvmir2hll {
 
-/**
-* @brief Constructs a new empty statement.
-*
-* See create() for more information.
-*/
-EmptyStmt::EmptyStmt() {}
-
-/**
-* @brief Destructs the statement.
-*/
-EmptyStmt::~EmptyStmt() {}
+EmptyStmt::EmptyStmt(Address a) : Statement(a) {}
 
 ShPtr<Value> EmptyStmt::clone() {
-	ShPtr<EmptyStmt> emptyStmt(EmptyStmt::create());
+	ShPtr<EmptyStmt> emptyStmt(EmptyStmt::create(nullptr, getAddress()));
 	emptyStmt->setMetadata(getMetadata());
 	return emptyStmt;
 }
@@ -45,9 +36,10 @@ ShPtr<Expression> EmptyStmt::asExpression() const {
 * @brief Creates a new empty statement.
 *
 * @param[in] succ Follower of the statement in the program flow.
+* @param[in] a Address.
 */
-ShPtr<EmptyStmt> EmptyStmt::create(ShPtr<Statement> succ) {
-	ShPtr<EmptyStmt> stmt(new EmptyStmt());
+ShPtr<EmptyStmt> EmptyStmt::create(ShPtr<Statement> succ, Address a) {
+	ShPtr<EmptyStmt> stmt(new EmptyStmt(a));
 	stmt->setSuccessor(succ);
 	return stmt;
 }
@@ -57,3 +49,4 @@ void EmptyStmt::accept(Visitor *v) {
 }
 
 } // namespace llvmir2hll
+} // namespace retdec

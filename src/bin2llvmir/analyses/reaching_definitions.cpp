@@ -5,30 +5,28 @@
 */
 
 #include <iomanip>
-#include <iostream>
 #include <set>
 #include <sstream>
 #include <string>
 #include <vector>
 
 #include <llvm/ADT/PostOrderIterator.h>
-#include <llvm/Analysis/OrderedBasicBlock.h>
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/Support/raw_ostream.h>
 
-#include "tl-cpputils/time.h"
-#include "bin2llvmir/analyses/reaching_definitions.h"
-#include "bin2llvmir/providers/asm_instruction.h"
-#include "bin2llvmir/utils/instruction.h"
+#include "retdec/utils/time.h"
+#include "retdec/bin2llvmir/analyses/reaching_definitions.h"
+#include "retdec/bin2llvmir/providers/asm_instruction.h"
+#include "retdec/bin2llvmir/providers/names.h"
 #define debug_enabled false
-#include "llvm-support/utils.h"
+#include "retdec/bin2llvmir/utils/llvm.h"
 
-using namespace llvm_support;
-using namespace tl_cpputils;
+using namespace retdec::utils;
 using namespace llvm;
 
+namespace retdec {
 namespace bin2llvmir {
 
 //
@@ -39,11 +37,11 @@ namespace bin2llvmir {
 
 bool ReachingDefinitionsAnalysis::runOnModule(
 		Module& M,
-		Config* c,
+		Abi* abi,
 		bool trackFlagRegs)
 {
 	_trackFlagRegs = trackFlagRegs;
-	_config = c;
+	_abi = abi;
 	_specialGlobal = AsmInstruction::getLlvmToAsmGlobalVariable(&M);
 
 	clear();
@@ -56,11 +54,11 @@ bool ReachingDefinitionsAnalysis::runOnModule(
 
 bool ReachingDefinitionsAnalysis::runOnFunction(
 		llvm::Function& F,
-		Config* c,
+		Abi* abi,
 		bool trackFlagRegs)
 {
 	_trackFlagRegs = trackFlagRegs;
-	_config = c;
+	_abi = abi;
 	_specialGlobal = AsmInstruction::getLlvmToAsmGlobalVariable(F.getParent());
 
 	clear();
@@ -85,7 +83,7 @@ void ReachingDefinitionsAnalysis::run()
 
 void ReachingDefinitionsAnalysis::initializeBasicBlocks(llvm::Module& M)
 {
-	for (auto &F : M.getFunctionList())
+	for (Function& F : M)
 	{
 		initializeBasicBlocks(F);
 	}
@@ -93,12 +91,14 @@ void ReachingDefinitionsAnalysis::initializeBasicBlocks(llvm::Module& M)
 
 void ReachingDefinitionsAnalysis::initializeBasicBlocks(llvm::Function& F)
 {
-	for (auto &B : F)
+	for (BasicBlock& B : F)
 	{
-		BasicBlockEntry bbe(&B);
+		BasicBlockEntry bbe(&B, bbMap.size());
 
-		for (auto &I : B)
+		int insnPos = -1;
+		for (Instruction& I : B)
 		{
+			++insnPos;
 			if (auto* l = dyn_cast<LoadInst>(&I))
 			{
 				if (!isa<GlobalVariable>(l->getPointerOperand())
@@ -107,13 +107,45 @@ void ReachingDefinitionsAnalysis::initializeBasicBlocks(llvm::Function& F)
 					continue;
 				}
 				if (!_trackFlagRegs
-						&& _config
-						&& _config->isFlagRegister(l->getPointerOperand()))
+						&& _abi
+						&& _abi->isFlagRegister(l->getPointerOperand()))
 				{
 					continue;
 				}
 
-				bbe.uses.push_back(Use(l, l->getPointerOperand()));
+				bbe.uses.push_back(Use(l, l->getPointerOperand(), insnPos));
+			}
+			else if (auto* p2i = dyn_cast<PtrToIntInst>(&I))
+			{
+				if (!isa<GlobalVariable>(p2i->getPointerOperand())
+						&& !isa<AllocaInst>(p2i->getPointerOperand()))
+				{
+					continue;
+				}
+				if (!_trackFlagRegs
+						&& _abi
+						&& _abi->isFlagRegister(p2i->getPointerOperand()))
+				{
+					continue;
+				}
+
+				bbe.uses.push_back(Use(p2i, p2i->getPointerOperand(), insnPos));
+			}
+			else if (auto* gep = dyn_cast<GetElementPtrInst>(&I))
+			{
+				if (!isa<GlobalVariable>(gep->getPointerOperand())
+						&& !isa<AllocaInst>(gep->getPointerOperand()))
+				{
+					continue;
+				}
+				if (!_trackFlagRegs
+						&& _abi
+						&& _abi->isFlagRegister(gep->getPointerOperand()))
+				{
+					continue;
+				}
+
+				bbe.uses.push_back(Use(gep, gep->getPointerOperand(), insnPos));
 			}
 			else if (auto* s = dyn_cast<StoreInst>(&I))
 			{
@@ -123,8 +155,8 @@ void ReachingDefinitionsAnalysis::initializeBasicBlocks(llvm::Function& F)
 					continue;
 				}
 				if (!_trackFlagRegs
-						&& _config
-						&& _config->isFlagRegister(s->getPointerOperand()))
+						&& _abi
+						&& _abi->isFlagRegister(s->getPointerOperand()))
 				{
 					continue;
 				}
@@ -133,11 +165,11 @@ void ReachingDefinitionsAnalysis::initializeBasicBlocks(llvm::Function& F)
 					continue;
 				}
 
-				bbe.defs.push_back(Definition(s, s->getPointerOperand()));
+				bbe.defs.push_back(Definition(s, s->getPointerOperand(), insnPos));
 			}
 			else if (auto* a = dyn_cast<AllocaInst>(&I))
 			{
-				bbe.defs.push_back(Definition(a, a));
+				bbe.defs.push_back(Definition(a, a, insnPos));
 			}
 			else if (auto* call = dyn_cast<CallInst>(&I))
 			{
@@ -147,15 +179,15 @@ void ReachingDefinitionsAnalysis::initializeBasicBlocks(llvm::Function& F)
 					Value *a = call->getArgOperand(i);
 
 					if (!_trackFlagRegs
-							&& _config
-							&& _config->isFlagRegister(a))
+							&& _abi
+							&& _abi->isFlagRegister(a))
 					{
 						continue;
 					}
 
 					if (isa<AllocaInst>(a) || isa<GlobalVariable>(a))
 					{
-						bbe.uses.push_back( Use(&I, a) );
+						bbe.uses.push_back(Use(call, a, insnPos));
 					}
 				}
 
@@ -266,7 +298,6 @@ void ReachingDefinitionsAnalysis::initializeDefsAndUses()
 	for (auto& pair : pair1.second)
 	{
 		BasicBlockEntry &bb = pair.second;
-		OrderedBasicBlock obb(bb.bb);
 
 		for (Use &u : bb.uses)
 		{
@@ -279,7 +310,7 @@ void ReachingDefinitionsAnalysis::initializeDefsAndUses()
 					continue;
 				}
 
-				if (obb.dominates(d.def, u.use))
+				if (d.dominates(&u))
 				{
 					d.uses.insert(&u);
 					u.defs.insert(&d);
@@ -347,18 +378,15 @@ std::ostream& operator<<(std::ostream& out, const ReachingDefinitionsAnalysis& r
 	return out;
 }
 
-
 //
 //=============================================================================
 //  BasicBlockEntry
 //=============================================================================
 //
 
-int BasicBlockEntry::newUID = 0;
-
-BasicBlockEntry::BasicBlockEntry(const llvm::BasicBlock* b) :
+BasicBlockEntry::BasicBlockEntry(const llvm::BasicBlock* b, std::size_t _id) :
 	bb(b),
-	id(newUID++)
+	id(_id)
 {
 
 }
@@ -416,7 +444,7 @@ std::string BasicBlockEntry::getName() const
 	std::stringstream out;
 	std::string name = bb->getName().str();
 	if (name.empty())
-		out << "bb_" << id;
+		out << names::generatedBasicBlockPrefix << id;
 	else
 		out << name;
 	return out.str();
@@ -438,13 +466,19 @@ const UseSet& BasicBlockEntry::usesFromDef(const Instruction* I) const
 
 const Definition* BasicBlockEntry::getDef(const Instruction* I) const
 {
-	auto dIt = find(defs.begin(), defs.end(), Definition(const_cast<Instruction*>(I), nullptr));
+	auto dIt = find(
+			defs.begin(),
+			defs.end(),
+			Definition(const_cast<Instruction*>(I), nullptr, 0));
 	return dIt != defs.end() ? &(*dIt) : nullptr;
 }
 
 const Use* BasicBlockEntry::getUse(const Instruction* I) const
 {
-	auto uIt = find(uses.begin(), uses.end(), Use(const_cast<Instruction*>(I), nullptr));
+	auto uIt = find(
+			uses.begin(),
+			uses.end(),
+			Use(const_cast<Instruction*>(I), nullptr, 0));
 	return uIt != uses.end() ? &(*uIt) : nullptr;
 }
 
@@ -486,9 +520,10 @@ std::ostream& operator<<(std::ostream& out, const BasicBlockEntry& bbe)
 //=============================================================================
 //
 
-Definition::Definition(llvm::Instruction* d, llvm::Value* s) :
+Definition::Definition(llvm::Instruction* d, llvm::Value* s, unsigned bbPos) :
 		def(d),
-		src(s)
+		src(s),
+		posInBb(bbPos)
 {
 
 }
@@ -503,15 +538,26 @@ llvm::Value* Definition::getSource()
 	return src;
 }
 
+/**
+ * Convenience method so that we don't have to check integer positions.
+ * However, this does not check that the given @a use is indeed an use of this
+ * definition - users of this method must make sure that it is.
+ */
+bool Definition::dominates(const Use* use) const
+{
+	return def->getParent() == use->use->getParent() && posInBb < use->posInBb;
+}
+
 //
 //=============================================================================
 //  Use
 //=============================================================================
 //
 
-Use::Use(llvm::Instruction* u, llvm::Value* s) :
+Use::Use(llvm::Instruction* u, llvm::Value* s, unsigned bbPos) :
 		use(u),
-		src(s)
+		src(s),
+		posInBb(bbPos)
 {
 
 }
@@ -533,4 +579,210 @@ bool Use::isUndef() const
 	return false;
 }
 
+//
+//=============================================================================
+//  On-demand methods.
+//=============================================================================
+//
+
+/**
+ * Find the last definition of value \p v in basic block \p bb.
+ * If \p start is defined (not \c nullptr), start the reverse iteration search
+ * from this instruction, otherwise start from the basic block's back.
+ * \return Instruction defining \p v (at most one definition is possible in BB),
+ *         or \c nullptr if definition not found.
+ */
+llvm::Instruction* defInBasicBlock(
+		llvm::Value* v,
+		llvm::BasicBlock* bb,
+		llvm::Instruction* start = nullptr)
+{
+	auto* prev = start;
+	if (prev == nullptr && !bb->empty())
+	{
+		prev = &bb->back();
+	}
+
+	while (prev)
+	{
+		if (auto* s = dyn_cast<StoreInst>(prev))
+		{
+			if (s->getPointerOperand() == v)
+			{
+				return s;
+			}
+		}
+		else if (prev == v) // AllocaInst
+		{
+			return prev;
+		}
+		prev = prev->getPrevNode();
+	}
+
+	return nullptr;
+}
+
+/**
+ * Find all uses of value \p v in basic block \p bb and add them to \p uses.
+ * If \p start is defined (not \c nullptr), start the iteration search from
+ * this instruction, otherwise start from the basic block's front.
+ * \return \c True if the basic block kills the value, \p false otherwise.
+ */
+bool usesInBasicBlock(
+		llvm::Value* v,
+		llvm::BasicBlock* bb,
+		std::set<llvm::Instruction*>& uses,
+		llvm::Instruction* start = nullptr)
+{
+	auto* next = start;
+	if (next == nullptr && !bb->empty())
+	{
+		next = &bb->front();
+	}
+
+	while (next)
+	{
+		if (auto* s = dyn_cast<StoreInst>(next))
+		{
+			if (s->getPointerOperand() == v)
+			{
+				return true;
+			}
+		}
+
+		for (auto& op : next->operands())
+		{
+			if (op == v)
+			{
+				uses.insert(next);
+			}
+		}
+		next = next->getNextNode();
+	}
+
+	return false;
+}
+
+std::set<llvm::Instruction*> ReachingDefinitionsAnalysis::defsFromUse_onDemand(
+		llvm::Instruction* I)
+{
+	std::set<llvm::Instruction*> ret;
+
+	auto* l = dyn_cast<LoadInst>(I);
+	if (l == nullptr)
+	{
+		return ret;
+	}
+	if (!isa<GlobalVariable>(l->getPointerOperand())
+			&& !isa<AllocaInst>(l->getPointerOperand()))
+	{
+		return ret;
+	}
+
+	// Try to find in the same basic block.
+	//
+	if (auto* d = defInBasicBlock(l->getPointerOperand(), l->getParent(), l))
+	{
+		ret.insert(d);
+		return ret;
+	}
+
+	std::set<llvm::BasicBlock*> searchedBbs;
+	std::vector<llvm::BasicBlock*> worklistBbs;
+
+	auto preds = predecessors(l->getParent());
+	std::copy(preds.begin(), preds.end(), std::back_inserter(worklistBbs));
+
+	// Try to find in all predecessing basic blocks.
+	//
+	while (!worklistBbs.empty())
+	{
+		auto* bb = worklistBbs.back();
+		worklistBbs.pop_back();
+
+		searchedBbs.insert(bb);
+
+		if (auto* d = defInBasicBlock(l->getPointerOperand(), bb))
+		{
+			ret.insert(d);
+			// Definition found -> predecessors not added.
+		}
+		else
+		{
+			// No definition found -> add predecessors.
+			for (auto* p : predecessors(bb))
+			{
+				if (searchedBbs.count(p) == 0)
+				{
+					worklistBbs.push_back(p);
+				}
+			}
+		}
+	}
+
+	return ret;
+}
+
+std::set<llvm::Instruction*> ReachingDefinitionsAnalysis::usesFromDef_onDemand(
+		llvm::Instruction* I)
+{
+	std::set<llvm::Instruction*> ret;
+
+	Value* val = nullptr;
+	if (auto* s = dyn_cast<StoreInst>(I))
+	{
+		val = s->getPointerOperand();
+	}
+	else if (auto* a = dyn_cast<AllocaInst>(I))
+	{
+		val = a;
+	}
+	if (val == nullptr || !(isa<GlobalVariable>(val) || isa<AllocaInst>(val)))
+	{
+		return ret;
+	}
+
+	// Try to find in the same basic block.
+	//
+	if (usesInBasicBlock(val, I->getParent(), ret, I->getNextNode()))
+	{
+		return ret;
+	}
+
+	std::set<llvm::BasicBlock*> searchedBbs;
+	std::vector<llvm::BasicBlock*> worklistBbs;
+
+	auto succs = successors(I->getParent());
+	std::copy(succs.begin(), succs.end(), std::back_inserter(worklistBbs));
+
+	// Try to find in all predecessing basic blocks.
+	//
+	while (!worklistBbs.empty())
+	{
+		auto* bb = worklistBbs.back();
+		worklistBbs.pop_back();
+
+		searchedBbs.insert(bb);
+
+		if (usesInBasicBlock(val, bb, ret))
+		{
+			// BB kills value -> successors not added.
+		}
+		else
+		{
+			// BB does not kill value -> add successors.
+			for (auto* p : successors(bb))
+			{
+				if (searchedBbs.count(p) == 0)
+				{
+					worklistBbs.push_back(p);
+				}
+			}
+		}
+	}
+
+	return ret;
+}
+
 } // namespace bin2llvmir
+} // namespace retdec
